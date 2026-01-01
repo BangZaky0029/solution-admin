@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getPayments, activatePayment } from '../api/controllers/paymentController';
+import baseApi from '../api/api';
 
 export default function Payments() {
   const [payments, setPayments] = useState([]);
@@ -47,11 +48,11 @@ export default function Payments() {
 
     try {
       await activatePayment({ payment_id: paymentId });
-      alert(' Package activated successfully!');
-      loadPayments();
+      await loadPayments();
+      alert(' Payment activated successfully!');
     } catch (error) {
       console.error('Error activating payment:', error);
-      alert(' Failed to activate package');
+      alert(' Failed to activate payment');
     }
   };
 
@@ -231,9 +232,9 @@ export default function Payments() {
                       </div>
                     </td>
                     <td className="px-6 py-5">
-{payment.proof_image ? (
+                        {payment.proof_image ? (
                         <button
-                          onClick={() => setSelectedImage(`${baseURL}/uploads/${payment.proof_image}`)}
+                          onClick={() => setSelectedImage(`${baseApi}/uploads/${payment.proof_image}`)}
                           className="group flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-4 py-2 rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg"
                         >
                           <span className="text-xl"></span>

@@ -8,6 +8,7 @@ import AdminLayout from './layouts/AdminLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 
 export default function App() {
+  
   return (
     <BrowserRouter>
       <Routes>
