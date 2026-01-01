@@ -233,7 +233,7 @@ export default function Payments() {
                     <td className="px-6 py-5">
 {payment.proof_image ? (
                         <button
-                          onClick={() => setSelectedImage(`http://localhost:5000/uploads/${payment.proof_image}`)}
+                          onClick={() => setSelectedImage(`${baseURL}/uploads/${payment.proof_image}`)}
                           className="group flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-4 py-2 rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg"
                         >
                           <span className="text-xl"></span>

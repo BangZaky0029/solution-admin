@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { getUsers } from '../api/controllers/userController';
 
 export default function Users() {
@@ -219,7 +219,7 @@ export default function Users() {
               <tbody className="divide-y divide-gray-200">
                 {filteredUsers.map((user, index) => (
                   <tr 
-                    key={user.id} 
+                    key={`${user.id}-${index}`} 
                     className="hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-all duration-300"
                     style={{ animationDelay: `${index * 0.05}s` }}
                   >
