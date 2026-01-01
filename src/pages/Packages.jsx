@@ -19,17 +19,29 @@ export default function Packages() {
 
   const fetchPackages = async () => {
     try {
-      const data = await getPackages();
+      const response = await getPackages();
+      const data = Array.isArray(response) ? response : [];
       // Ensure features is an array
-      const formattedData = data.map(pkg => ({
-        ...pkg,
-        features: typeof pkg.features === 'string' 
-          ? (pkg.features.startsWith('[') ? JSON.parse(pkg.features) : pkg.features.split(',')) 
-          : pkg.features
-      }));
+      const formattedData = data.map(pkg => {
+        let features = [];
+        if (typeof pkg.features === 'string') {
+          try {
+            features = pkg.features.startsWith('[') 
+              ? JSON.parse(pkg.features) 
+              : pkg.features.split(',').map(f => f.trim()).filter(Boolean);
+          } catch (e) {
+            console.warn('Failed to parse features:', e);
+            features = [];
+          }
+        } else if (Array.isArray(pkg.features)) {
+          features = pkg.features;
+        }
+        return { ...pkg, features };
+      });
       setPackages(formattedData);
     } catch (error) {
       console.error('Error fetching packages:', error);
+      setPackages([]);
     } finally {
       setLoading(false);
     }
@@ -97,7 +109,9 @@ export default function Packages() {
     'from-pink-500 to-pink-700',
   ];
 
-  const PackageCard = ({ pkg, index }) => (
+  const PackageCard = ({ pkg = {}, index }) => {
+    const features = Array.isArray(pkg.features) ? pkg.features : [];
+    return (
     <div 
       className="group relative overflow-hidden bg-white rounded-3xl shadow-xl border-2 border-gray-100 hover:border-transparent hover:scale-105 transition-all duration-500"
       style={{ animationDelay: `${index * 0.1}s` }}
@@ -135,7 +149,7 @@ export default function Packages() {
       {/* Features List */}
       <div className="p-8">
         <div className="space-y-4 mb-6">
-          {pkg.features.map((feature, idx) => (
+          {features.map((feature, idx) => (
             <div key={idx} className="flex items-center gap-3 group/item">
               <div className="w-6 h-6 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center flex-shrink-0 group-hover/item:scale-125 transition-transform">
                 <span className="text-white text-xs font-bold">✓</span>
@@ -173,7 +187,8 @@ export default function Packages() {
       {/* Shine Effect */}
       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20 transform -translate-x-full group-hover:translate-x-full transition-all duration-1000 pointer-events-none"></div>
     </div>
-  );
+    );
+  };
 
   const Modal = () => {
     if (!showModal) return null;

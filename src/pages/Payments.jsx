@@ -231,13 +231,17 @@ export default function Payments() {
                       </div>
                     </td>
                     <td className="px-6 py-5">
-                      <button
-                        onClick={() => setSelectedImage(`http://localhost:5000/uploads/${payment.proof_image}`)}
-                        className="group flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-4 py-2 rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                      >
-                        <span className="text-xl"></span>
-                        <span>View</span>
-                      </button>
+{payment.proof_image ? (
+                        <button
+                          onClick={() => setSelectedImage(`http://localhost:5000/uploads/${payment.proof_image}`)}
+                          className="group flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-4 py-2 rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                        >
+                          <span className="text-xl"></span>
+                          <span>View</span>
+                        </button>
+                      ) : (
+                        <span className="text-gray-400 font-medium italic">No proof</span>
+                      )}
                     </td>
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-2">
