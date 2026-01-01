@@ -3,50 +3,307 @@ import api from '../api/api';
 
 export default function Payments() {
   const [payments, setPayments] = useState([]);
+  const [filteredPayments, setFilteredPayments] = useState([]);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   useEffect(() => {
-    api.get('/admin/payments').then(res => setPayments(res.data));
+    loadPayments();
   }, []);
 
-  const activate = async (id) => {
-    await api.post('/admin/activate', { payment_id: id });
-    alert('Package activated');
+  useEffect(() => {
+    filterPayments();
+  }, [search, payments]);
+
+  const loadPayments = async () => {
+    try {
+      const res = await api.get('/admin/payments');
+      setPayments(res.data);
+      setFilteredPayments(res.data);
+    } catch (error) {
+      console.error('Error loading payments:', error);
+      alert('Failed to load payments');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  return (
-    <div>
-      <h1 className="text-xl font-bold mb-4">Pending Payments</h1>
+  const filterPayments = () => {
+    if (!search) {
+      setFilteredPayments(payments);
+      return;
+    }
 
-      <table className="w-full bg-white shadow">
-        <thead className="bg-gray-200">
-          <tr>
-            <th>Email</th>
-            <th>Phone</th>
-            <th>Proof</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {payments.map(p => (
-            <tr key={p.id} className="text-center border-t">
-              <td>{p.email}</td>
-              <td>{p.phone}</td>
-              <td>
-                <a href={`http://localhost:5000/uploads/${p.proof_image}`} target="_blank">
-                  View
-                </a>
-              </td>
-              <td>
-                <button
-                  onClick={() => activate(p.payment_id)}
-                  className="bg-green-600 text-white px-3 py-1">
-                  Activate
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    const filtered = payments.filter(p =>
+      p.email.toLowerCase().includes(search.toLowerCase()) ||
+      p.phone.includes(search)
+    );
+    setFilteredPayments(filtered);
+  };
+
+  const activate = async (paymentId) => {
+    if (!confirm('Are you sure you want to activate this payment?')) return;
+
+    try {
+      await api.post('/admin/activate', { payment_id: paymentId });
+      alert('✅ Package activated successfully!');
+      loadPayments();
+    } catch (error) {
+      console.error('Error activating payment:', error);
+      alert('❌ Failed to activate package');
+    }
+  };
+
+  const ImageModal = () => {
+    if (!selectedImage) return null;
+
+    return (
+      <div
+        className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in"
+        onClick={() => setSelectedImage(null)}
+      >
+        <div className="relative max-w-4xl max-h-full animate-scale-in">
+          <button
+            onClick={() => setSelectedImage(null)}
+            className="absolute -top-12 right-0 bg-white/10 backdrop-blur-md hover:bg-red-500 text-white px-4 py-2 rounded-xl font-bold transition-all duration-300"
+          >
+            ✕ Close
+          </button>
+          <img
+            src={selectedImage}
+            alt="Payment Proof"
+            className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl border-4 border-white/20"
+          />
+        </div>
+      </div>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="relative w-24 h-24 mx-auto mb-6">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-spin opacity-75"></div>
+            <div className="absolute inset-2 bg-white rounded-full flex items-center justify-center">
+              <span className="text-4xl">💳</span>
+            </div>
+          </div>
+          <p className="text-gray-600 font-semibold">Loading payments...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* Header Card */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-amber-500 via-orange-500 to-pink-500 rounded-3xl p-8 shadow-2xl">
+        {/* Decorative elements */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full opacity-10 transform translate-x-1/2 -translate-y-1/2"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white rounded-full opacity-10 transform -translate-x-1/2 translate-y-1/2"></div>
+        
+        <div className="relative z-10">
+          <div className="flex items-center gap-4 mb-3">
+            <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
+              <span className="text-5xl">💳</span>
+            </div>
+            <div>
+              <h1 className="text-4xl font-black text-white mb-2">
+                Payment Management
+              </h1>
+              <p className="text-orange-100 text-lg font-medium">
+                Review and activate pending payment confirmations
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats & Search Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Pending Stats Card */}
+        <div className="lg:col-span-1 relative overflow-hidden bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl p-6 shadow-xl group hover:scale-105 transition-transform duration-300">
+          <div className="absolute -right-8 -top-8 w-32 h-32 bg-white rounded-full opacity-10 group-hover:scale-150 transition-transform duration-500"></div>
+          
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-4">
+              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                <span className="text-4xl">⏳</span>
+              </div>
+            </div>
+            <p className="text-white/90 font-semibold mb-2">Pending Payments</p>
+            <p className="text-5xl font-black text-white">{filteredPayments.length}</p>
+            <p className="text-white/70 text-sm mt-2">Awaiting confirmation</p>
+          </div>
+        </div>
+
+        {/* Search Card */}
+        <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-xl border border-gray-100">
+          <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+            <span className="text-2xl">🔍</span>
+            Search Payments
+          </label>
+          <div className="relative group">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by email or phone number..."
+              className="w-full px-6 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-300 focus:border-purple-500 transition-all duration-300 outline-none text-gray-800 font-medium"
+            />
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 opacity-0 group-focus-within:opacity-10 transition-opacity -z-10 blur-xl"></div>
+            
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-4 top-1/2 -translate-y-1/2 bg-gray-200 hover:bg-gray-300 rounded-lg px-3 py-1 text-sm font-semibold text-gray-700 transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Payments Table Card */}
+      <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
+        {filteredPayments.length === 0 ? (
+          <div className="text-center py-20">
+            <div className="inline-block bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl p-8 mb-6">
+              <span className="text-8xl">📭</span>
+            </div>
+            <p className="text-2xl font-bold text-gray-800 mb-2">No pending payments</p>
+            <p className="text-gray-600">
+              {search ? 'Try different search terms' : 'All payments have been processed'}
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gradient-to-r from-gray-50 to-gray-100">
+                  <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
+                    Payment ID
+                  </th>
+                  <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
+                    Customer Info
+                  </th>
+                  <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
+                    Proof
+                  </th>
+                  <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="px-6 py-5 text-center text-xs font-black text-gray-700 uppercase tracking-wider">
+                    Action
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredPayments.map((payment, index) => (
+                  <tr 
+                    key={payment.id} 
+                    className="hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-all duration-300"
+                    style={{ animationDelay: `${index * 0.05}s` }}
+                  >
+                    <td className="px-6 py-5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg">
+                          #
+                        </div>
+                        <span className="font-bold text-gray-900">
+                          {payment.payment_id}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div>
+                        <p className="font-semibold text-gray-900 flex items-center gap-2">
+                          <span>📧</span>
+                          {payment.email}
+                        </p>
+                        <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
+                          <span>📱</span>
+                          {payment.phone}
+                        </p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <button
+                        onClick={() => setSelectedImage(`http://localhost:5000/uploads/${payment.proof_image}`)}
+                        className="group flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-4 py-2 rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                      >
+                        <span className="text-xl">📷</span>
+                        <span>View</span>
+                      </button>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">📅</span>
+                        <span className="text-sm font-medium text-gray-700">
+                          {new Date(payment.created_at).toLocaleDateString('id-ID', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                          })}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5 text-center">
+                      <button
+                        onClick={() => activate(payment.payment_id)}
+                        className="group relative bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-6 py-3 rounded-xl font-bold transition-all duration-300 hover:scale-110 hover:shadow-2xl overflow-hidden"
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-green-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <span className="relative flex items-center gap-2">
+                          <span className="text-xl">✅</span>
+                          Activate
+                        </span>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <ImageModal />
+
+      <style jsx>{`
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes scale-in {
+          from {
+            opacity: 0;
+            transform: scale(0.9);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        .animate-fade-in {
+          animation: fade-in 0.5s ease-out;
+        }
+
+        .animate-scale-in {
+          animation: scale-in 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 }
