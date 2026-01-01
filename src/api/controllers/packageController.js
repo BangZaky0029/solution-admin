@@ -11,11 +11,11 @@ export const createPackage = async (data) => {
 };
 
 export const updatePackage = async (id, data) => {
-  const response = await api.put(/package/, data);
+  const response = await api.put(`/package/${id}`, data);
   return response.data;
 };
 
 export const deletePackage = async (id) => {
-  const response = await api.delete(/package/);
+  const response = await api.delete(`/package/${id}`);
   return response.data;
 };

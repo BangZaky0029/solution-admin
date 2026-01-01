@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import api from '../api/api';
+﻿import { useEffect, useState } from 'react';
+import { getPayments, activatePayment } from '../api/controllers/paymentController';
 
 export default function Payments() {
   const [payments, setPayments] = useState([]);
@@ -18,9 +18,9 @@ export default function Payments() {
 
   const loadPayments = async () => {
     try {
-      const res = await api.get('/admin/payments');
-      setPayments(res.data);
-      setFilteredPayments(res.data);
+      const data = await getPayments();
+      setPayments(data);
+      setFilteredPayments(data);
     } catch (error) {
       console.error('Error loading payments:', error);
       alert('Failed to load payments');
@@ -46,12 +46,12 @@ export default function Payments() {
     if (!confirm('Are you sure you want to activate this payment?')) return;
 
     try {
-      await api.post('/admin/activate', { payment_id: paymentId });
-      alert('✅ Package activated successfully!');
+      await activatePayment({ payment_id: paymentId });
+      alert(' Package activated successfully!');
       loadPayments();
     } catch (error) {
       console.error('Error activating payment:', error);
-      alert('❌ Failed to activate package');
+      alert(' Failed to activate package');
     }
   };
 
@@ -68,7 +68,7 @@ export default function Payments() {
             onClick={() => setSelectedImage(null)}
             className="absolute -top-12 right-0 bg-white/10 backdrop-blur-md hover:bg-red-500 text-white px-4 py-2 rounded-xl font-bold transition-all duration-300"
           >
-            ✕ Close
+             Close
           </button>
           <img
             src={selectedImage}
@@ -87,7 +87,7 @@ export default function Payments() {
           <div className="relative w-24 h-24 mx-auto mb-6">
             <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-spin opacity-75"></div>
             <div className="absolute inset-2 bg-white rounded-full flex items-center justify-center">
-              <span className="text-4xl">💳</span>
+              <span className="text-4xl"></span>
             </div>
           </div>
           <p className="text-gray-600 font-semibold">Loading payments...</p>
@@ -107,7 +107,7 @@ export default function Payments() {
         <div className="relative z-10">
           <div className="flex items-center gap-4 mb-3">
             <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
-              <span className="text-5xl">💳</span>
+              <span className="text-5xl"></span>
             </div>
             <div>
               <h1 className="text-4xl font-black text-white mb-2">
@@ -130,7 +130,7 @@ export default function Payments() {
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-4">
               <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3">
-                <span className="text-4xl">⏳</span>
+                <span className="text-4xl"></span>
               </div>
             </div>
             <p className="text-white/90 font-semibold mb-2">Pending Payments</p>
@@ -142,7 +142,7 @@ export default function Payments() {
         {/* Search Card */}
         <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-xl border border-gray-100">
           <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-            <span className="text-2xl">🔍</span>
+            <span className="text-2xl"></span>
             Search Payments
           </label>
           <div className="relative group">
@@ -172,7 +172,7 @@ export default function Payments() {
         {filteredPayments.length === 0 ? (
           <div className="text-center py-20">
             <div className="inline-block bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl p-8 mb-6">
-              <span className="text-8xl">📭</span>
+              <span className="text-8xl"></span>
             </div>
             <p className="text-2xl font-bold text-gray-800 mb-2">No pending payments</p>
             <p className="text-gray-600">
@@ -221,11 +221,11 @@ export default function Payments() {
                     <td className="px-6 py-5">
                       <div>
                         <p className="font-semibold text-gray-900 flex items-center gap-2">
-                          <span>📧</span>
+                          <span></span>
                           {payment.email}
                         </p>
                         <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
-                          <span>📱</span>
+                          <span></span>
                           {payment.phone}
                         </p>
                       </div>
@@ -235,13 +235,13 @@ export default function Payments() {
                         onClick={() => setSelectedImage(`http://localhost:5000/uploads/${payment.proof_image}`)}
                         className="group flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-4 py-2 rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg"
                       >
-                        <span className="text-xl">📷</span>
+                        <span className="text-xl"></span>
                         <span>View</span>
                       </button>
                     </td>
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-2">
-                        <span className="text-xl">📅</span>
+                        <span className="text-xl"></span>
                         <span className="text-sm font-medium text-gray-700">
                           {new Date(payment.created_at).toLocaleDateString('id-ID', {
                             year: 'numeric',
@@ -258,7 +258,7 @@ export default function Payments() {
                       >
                         <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-green-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <span className="relative flex items-center gap-2">
-                          <span className="text-xl">✅</span>
+                          <span className="text-xl"></span>
                           Activate
                         </span>
                       </button>
@@ -272,38 +272,6 @@ export default function Payments() {
       </div>
 
       <ImageModal />
-
-      <style jsx>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes scale-in {
-          from {
-            opacity: 0;
-            transform: scale(0.9);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-
-        .animate-fade-in {
-          animation: fade-in 0.5s ease-out;
-        }
-
-        .animate-scale-in {
-          animation: scale-in 0.3s ease-out;
-        }
-      `}</style>
     </div>
   );
 }

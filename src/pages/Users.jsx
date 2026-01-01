@@ -1,41 +1,26 @@
-import { useState } from 'react';
+﻿import { useState, useEffect } from 'react';
+import { getUsers } from '../api/controllers/userController';
 
 export default function Users() {
-  const [users] = useState([
-    {
-      id: 1,
-      name: 'John Doe',
-      email: 'john@example.com',
-      phone: '081234567890',
-      is_verified: true,
-      created_at: '2024-01-15',
-      package: 'Premium',
-      expires_at: '2024-02-15',
-    },
-    {
-      id: 2,
-      name: 'Jane Smith',
-      email: 'jane@example.com',
-      phone: '081234567891',
-      is_verified: true,
-      created_at: '2024-01-20',
-      package: 'Basic',
-      expires_at: '2024-02-20',
-    },
-    {
-      id: 3,
-      name: 'Bob Wilson',
-      email: 'bob@example.com',
-      phone: '081234567892',
-      is_verified: false,
-      created_at: '2024-01-25',
-      package: null,
-      expires_at: null,
-    },
-  ]);
-  
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const data = await getUsers();
+      setUsers(data);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getFilteredUsers = () => {
     let filtered = users;
@@ -50,8 +35,8 @@ export default function Users() {
 
     if (filter === 'verified') filtered = filtered.filter(u => u.is_verified);
     else if (filter === 'unverified') filtered = filtered.filter(u => !u.is_verified);
-    else if (filter === 'active') filtered = filtered.filter(u => u.package && new Date(u.expires_at) > new Date());
-    else if (filter === 'expired') filtered = filtered.filter(u => !u.package || new Date(u.expires_at) <= new Date());
+    else if (filter === 'active') filtered = filtered.filter(u => u.package_name && new Date(u.expired_at) > new Date());
+    else if (filter === 'expired') filtered = filtered.filter(u => !u.package_name || new Date(u.expired_at) <= new Date());
 
     return filtered;
   };
@@ -59,22 +44,22 @@ export default function Users() {
   const filteredUsers = getFilteredUsers();
 
   const getStatusBadge = (user) => {
-    if (!user.package) {
+    if (!user.package_name) {
       return (
         <span className="px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-xs font-black flex items-center gap-2 w-fit">
-          <span>⚪</span> No Package
+          <span></span> No Package
         </span>
       );
     }
     
-    const isExpired = new Date(user.expires_at) <= new Date();
+    const isExpired = new Date(user.expired_at) <= new Date();
     return isExpired ? (
       <span className="px-4 py-2 bg-gradient-to-r from-red-100 to-pink-100 text-red-700 rounded-full text-xs font-black flex items-center gap-2 w-fit">
-        <span>🔴</span> Expired
+        <span></span> Expired
       </span>
     ) : (
       <span className="px-4 py-2 bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 rounded-full text-xs font-black flex items-center gap-2 w-fit">
-        <span>🟢</span> Active
+        <span></span> Active
       </span>
     );
   };
@@ -106,7 +91,7 @@ export default function Users() {
         
         <div className="relative z-10 flex items-center gap-4">
           <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
-            <span className="text-5xl">👥</span>
+            <span className="text-5xl"></span>
           </div>
           <div>
             <h1 className="text-4xl font-black text-white mb-2">
@@ -122,30 +107,30 @@ export default function Users() {
       {/* Statistics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <StatCard
-          icon="👥"
+          icon=""
           title="Total Users"
           value={users.length}
           gradient="from-blue-500 to-blue-700"
           delay="0s"
         />
         <StatCard
-          icon="✅"
+          icon=""
           title="Verified"
           value={users.filter(u => u.is_verified).length}
           gradient="from-green-500 to-emerald-700"
           delay="0.1s"
         />
         <StatCard
-          icon="🟢"
+          icon=""
           title="Active Packages"
-          value={users.filter(u => u.package && new Date(u.expires_at) > new Date()).length}
+          value={users.filter(u => u.package_name && new Date(u.expired_at) > new Date()).length}
           gradient="from-purple-500 to-purple-700"
           delay="0.2s"
         />
         <StatCard
-          icon="🔴"
+          icon=""
           title="Expired"
-          value={users.filter(u => !u.package || new Date(u.expires_at) <= new Date()).length}
+          value={users.filter(u => !u.package_name || new Date(u.expired_at) <= new Date()).length}
           gradient="from-red-500 to-pink-700"
           delay="0.3s"
         />
@@ -156,7 +141,7 @@ export default function Users() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-              <span className="text-2xl">🔍</span>
+              <span className="text-2xl"></span>
               Search Users
             </label>
             <div className="relative group">
@@ -173,7 +158,7 @@ export default function Users() {
           
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-              <span className="text-2xl">🎯</span>
+              <span className="text-2xl"></span>
               Filter By
             </label>
             <select
@@ -182,36 +167,26 @@ export default function Users() {
               className="w-full px-6 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-300 focus:border-purple-500 transition-all duration-300 outline-none font-medium cursor-pointer"
             >
               <option value="all">All Users</option>
-              <option value="verified">✅ Verified Only</option>
-              <option value="unverified">❌ Unverified Only</option>
-              <option value="active">🟢 Active Packages</option>
-              <option value="expired">🔴 Expired/No Package</option>
+              <option value="verified"> Verified Only</option>
+              <option value="unverified"> Unverified Only</option>
+              <option value="active"> Active Packages</option>
+              <option value="expired"> Expired/No Package</option>
             </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Alert Info */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-yellow-50 to-orange-50 border-l-4 border-yellow-400 p-6 rounded-2xl shadow-lg">
-        <div className="flex items-start gap-4">
-          <div className="bg-yellow-400 rounded-xl p-3">
-            <span className="text-3xl">⚠️</span>
-          </div>
-          <div>
-            <p className="font-black text-yellow-900 text-lg mb-1">Demo Data</p>
-            <p className="text-yellow-800 font-medium">
-              This is demo data. Please implement the backend API to fetch real user data.
-            </p>
           </div>
         </div>
       </div>
 
       {/* Users Table */}
       <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
-        {filteredUsers.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-20">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mb-4"></div>
+            <p className="text-gray-600">Loading users...</p>
+          </div>
+        ) : filteredUsers.length === 0 ? (
           <div className="text-center py-20">
             <div className="inline-block bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl p-8 mb-6">
-              <span className="text-8xl">👤</span>
+              <span className="text-8xl"></span>
             </div>
             <p className="text-2xl font-bold text-gray-800 mb-2">No users found</p>
             <p className="text-gray-600">Try different search terms or filters</p>
@@ -253,7 +228,7 @@ export default function Users() {
                         <div className="relative">
                           <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full blur-sm animate-pulse"></div>
                           <div className="relative w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                            {user.name.charAt(0)}
+                            {user.name ? user.name.charAt(0) : '?'}
                           </div>
                         </div>
                         <div>
@@ -264,34 +239,34 @@ export default function Users() {
                     </td>
                     <td className="px-6 py-5">
                       <p className="font-semibold text-gray-900 flex items-center gap-2 mb-1">
-                        <span>📧</span>
+                        <span></span>
                         {user.email}
                       </p>
                       <p className="text-sm text-gray-600 flex items-center gap-2">
-                        <span>📱</span>
+                        <span></span>
                         {user.phone}
                       </p>
                     </td>
                     <td className="px-6 py-5 text-center">
                       {user.is_verified ? (
                         <div className="inline-block bg-green-100 p-3 rounded-full">
-                          <span className="text-3xl">✅</span>
+                          <span className="text-3xl"></span>
                         </div>
                       ) : (
                         <div className="inline-block bg-red-100 p-3 rounded-full">
-                          <span className="text-3xl">❌</span>
+                          <span className="text-3xl"></span>
                         </div>
                       )}
                     </td>
                     <td className="px-6 py-5">
-                      {user.package ? (
+                      {user.package_name ? (
                         <div>
                           <span className="inline-block px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-bold mb-2">
-                            {user.package}
+                            {user.package_name}
                           </span>
                           <p className="text-xs text-gray-600 flex items-center gap-1">
-                            <span>⏰</span>
-                            Expires: {new Date(user.expires_at).toLocaleDateString('id-ID')}
+                            <span></span>
+                            Expires: {new Date(user.expired_at).toLocaleDateString('id-ID')}
                           </p>
                         </div>
                       ) : (
@@ -303,7 +278,7 @@ export default function Users() {
                     </td>
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-2 text-gray-700">
-                        <span className="text-xl">📅</span>
+                        <span className="text-xl"></span>
                         <span className="font-medium">
                           {new Date(user.created_at).toLocaleDateString('id-ID', {
                             year: 'numeric',
@@ -320,23 +295,6 @@ export default function Users() {
           </div>
         )}
       </div>
-
-      <style jsx>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fade-in {
-          animation: fade-in 0.5s ease-out;
-        }
-      `}</style>
     </div>
   );
 }

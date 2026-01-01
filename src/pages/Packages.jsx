@@ -1,11 +1,9 @@
-import { useState } from 'react';
+﻿import { useState, useEffect } from 'react';
+import { getPackages, createPackage, updatePackage, deletePackage } from '../api/controllers/packageController';
 
 export default function Packages() {
-  const [packages, setPackages] = useState([
-    { id: 1, name: 'Basic', price: 50000, duration_days: 30, features: ['5 GB Storage', 'Basic Support', 'Email Notifications'] },
-    { id: 2, name: 'Premium', price: 100000, duration_days: 30, features: ['All Basic Features', '20 GB Storage', 'Priority Support', 'Advanced Analytics'] },
-    { id: 3, name: 'Enterprise', price: 200000, duration_days: 30, features: ['All Premium Features', 'Unlimited Storage', '24/7 VIP Support', 'Custom Integration'] },
-  ]);
+  const [packages, setPackages] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingPackage, setEditingPackage] = useState(null);
   const [formData, setFormData] = useState({
@@ -15,6 +13,28 @@ export default function Packages() {
     features: '',
   });
 
+  useEffect(() => {
+    fetchPackages();
+  }, []);
+
+  const fetchPackages = async () => {
+    try {
+      const data = await getPackages();
+      // Ensure features is an array
+      const formattedData = data.map(pkg => ({
+        ...pkg,
+        features: typeof pkg.features === 'string' 
+          ? (pkg.features.startsWith('[') ? JSON.parse(pkg.features) : pkg.features.split(',')) 
+          : pkg.features
+      }));
+      setPackages(formattedData);
+    } catch (error) {
+      console.error('Error fetching packages:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const openModal = (pkg = null) => {
     if (pkg) {
       setEditingPackage(pkg);
@@ -22,7 +42,7 @@ export default function Packages() {
         name: pkg.name,
         price: pkg.price,
         duration_days: pkg.duration_days,
-        features: pkg.features.join(', '),
+        features: Array.isArray(pkg.features) ? pkg.features.join(', ') : pkg.features,
       });
     } else {
       setEditingPackage(null);
@@ -36,35 +56,38 @@ export default function Packages() {
     setEditingPackage(null);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     const featuresArray = formData.features.split(',').map(f => f.trim()).filter(f => f);
+    const payload = { ...formData, features: featuresArray };
     
-    if (editingPackage) {
-      setPackages(packages.map(p => 
-        p.id === editingPackage.id 
-          ? { ...p, ...formData, features: featuresArray }
-          : p
-      ));
-      alert('✅ Package updated successfully!');
-    } else {
-      const newPackage = {
-        id: Date.now(),
-        ...formData,
-        features: featuresArray,
-      };
-      setPackages([...packages, newPackage]);
-      alert('✅ Package created successfully!');
+    try {
+      if (editingPackage) {
+        await updatePackage(editingPackage.id, payload);
+        alert(' Package updated successfully!');
+      } else {
+        await createPackage(payload);
+        alert(' Package created successfully!');
+      }
+      fetchPackages();
+      closeModal();
+    } catch (error) {
+      console.error('Error saving package:', error);
+      alert(' Failed to save package');
     }
-    
-    closeModal();
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (confirm('Are you sure you want to delete this package?')) {
-      setPackages(packages.filter(p => p.id !== id));
-      alert('✅ Package deleted successfully!');
+      try {
+        await deletePackage(id);
+        setPackages(packages.filter(p => p.id !== id));
+        alert(' Package deleted successfully!');
+      } catch (error) {
+        console.error('Error deleting package:', error);
+        alert(' Failed to delete package');
+      }
     }
   };
 
@@ -104,7 +127,7 @@ export default function Packages() {
             <span className="text-white/80 text-lg font-semibold">IDR</span>
           </div>
           <p className="text-white/90 text-sm font-medium mt-2">
-            ⏰ {pkg.duration_days} days access
+             {pkg.duration_days} days access
           </p>
         </div>
       </div>
@@ -162,7 +185,7 @@ export default function Packages() {
           <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-6 rounded-t-3xl">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-black text-white flex items-center gap-3">
-                <span className="text-3xl">{editingPackage ? '✏️' : '➕'}</span>
+                <span className="text-3xl">{editingPackage ? '✏️' : '✨'}</span>
                 {editingPackage ? 'Edit Package' : 'Create New Package'}
               </h2>
               <button
@@ -178,7 +201,7 @@ export default function Packages() {
           <form onSubmit={handleSubmit} className="p-8 space-y-6">
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                <span>📦</span> Package Name
+                <span>🏷️</span> Package Name
               </label>
               <input
                 type="text"
@@ -207,7 +230,7 @@ export default function Packages() {
 
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                  <span>⏰</span> Duration (days)
+                  <span>⏳</span> Duration (days)
                 </label>
                 <input
                   type="number"
@@ -254,6 +277,22 @@ export default function Packages() {
     );
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="relative w-24 h-24 mx-auto mb-6">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-spin opacity-75"></div>
+            <div className="absolute inset-2 bg-white rounded-full flex items-center justify-center">
+              <span className="text-4xl">📦</span>
+            </div>
+          </div>
+          <p className="text-gray-600 font-semibold">Loading packages...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -288,21 +327,6 @@ export default function Packages() {
         </div>
       </div>
 
-      {/* Alert Info */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-yellow-50 to-orange-50 border-l-4 border-yellow-400 p-6 rounded-2xl shadow-lg">
-        <div className="flex items-start gap-4">
-          <div className="bg-yellow-400 rounded-xl p-3">
-            <span className="text-3xl">⚠️</span>
-          </div>
-          <div>
-            <p className="font-black text-yellow-900 text-lg mb-1">Demo Mode</p>
-            <p className="text-yellow-800 font-medium">
-              This is a demo UI. Please implement the backend API endpoints for full CRUD functionality.
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* Packages Grid */}
       {packages.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -313,7 +337,7 @@ export default function Packages() {
       ) : (
         <div className="bg-white rounded-3xl p-20 text-center shadow-2xl">
           <div className="inline-block bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl p-10 mb-6">
-            <span className="text-8xl">📭</span>
+            <span className="text-8xl">📦</span>
           </div>
           <p className="text-3xl font-black text-gray-800 mb-3">No packages yet</p>
           <p className="text-gray-600 text-lg mb-6">Create your first package to get started</p>
@@ -330,38 +354,6 @@ export default function Packages() {
       )}
 
       <Modal />
-
-      <style jsx>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes scale-in {
-          from {
-            opacity: 0;
-            transform: scale(0.9);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-
-        .animate-fade-in {
-          animation: fade-in 0.5s ease-out;
-        }
-
-        .animate-scale-in {
-          animation: scale-in 0.3s ease-out;
-        }
-      `}</style>
     </div>
   );
 }
