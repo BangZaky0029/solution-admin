@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { getUsers } from '../api/controllers/userController';
 
 export default function Users() {
@@ -47,7 +47,7 @@ export default function Users() {
     if (!user.package_name) {
       return (
         <span className="px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-xs font-black flex items-center gap-2 w-fit">
-          <span></span> No Package
+          <span>❌</span> No Package
         </span>
       );
     }
@@ -55,11 +55,11 @@ export default function Users() {
     const isExpired = new Date(user.expired_at) <= new Date();
     return isExpired ? (
       <span className="px-4 py-2 bg-gradient-to-r from-red-100 to-pink-100 text-red-700 rounded-full text-xs font-black flex items-center gap-2 w-fit">
-        <span></span> Expired
+        <span>⚠️</span> Expired
       </span>
     ) : (
       <span className="px-4 py-2 bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 rounded-full text-xs font-black flex items-center gap-2 w-fit">
-        <span></span> Active
+        <span>✅</span> Active
       </span>
     );
   };
@@ -91,7 +91,7 @@ export default function Users() {
         
         <div className="relative z-10 flex items-center gap-4">
           <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
-            <span className="text-5xl"></span>
+            <span className="text-5xl">👥</span>
           </div>
           <div>
             <h1 className="text-4xl font-black text-white mb-2">
@@ -107,28 +107,28 @@ export default function Users() {
       {/* Statistics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <StatCard
-          icon=""
+          icon="👥"
           title="Total Users"
           value={users.length}
           gradient="from-blue-500 to-blue-700"
           delay="0s"
         />
         <StatCard
-          icon=""
+          icon="✅"
           title="Verified"
           value={users.filter(u => u.is_verified).length}
           gradient="from-green-500 to-emerald-700"
           delay="0.1s"
         />
         <StatCard
-          icon=""
+          icon="📦"
           title="Active Packages"
           value={users.filter(u => u.package_name && new Date(u.expired_at) > new Date()).length}
           gradient="from-purple-500 to-purple-700"
           delay="0.2s"
         />
         <StatCard
-          icon=""
+          icon="⚠️"
           title="Expired"
           value={users.filter(u => !u.package_name || new Date(u.expired_at) <= new Date()).length}
           gradient="from-red-500 to-pink-700"
@@ -141,7 +141,7 @@ export default function Users() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-              <span className="text-2xl"></span>
+              <span className="text-2xl">🔍</span>
               Search Users
             </label>
             <div className="relative group">
@@ -158,7 +158,7 @@ export default function Users() {
           
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-              <span className="text-2xl"></span>
+              <span className="text-2xl">🌪️</span>
               Filter By
             </label>
             <select
@@ -186,7 +186,7 @@ export default function Users() {
         ) : filteredUsers.length === 0 ? (
           <div className="text-center py-20">
             <div className="inline-block bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl p-8 mb-6">
-              <span className="text-8xl"></span>
+              <span className="text-8xl">🔍</span>
             </div>
             <p className="text-2xl font-bold text-gray-800 mb-2">No users found</p>
             <p className="text-gray-600">Try different search terms or filters</p>
@@ -239,22 +239,22 @@ export default function Users() {
                     </td>
                     <td className="px-6 py-5">
                       <p className="font-semibold text-gray-900 flex items-center gap-2 mb-1">
-                        <span></span>
+                        <span>📧</span>
                         {user.email}
                       </p>
                       <p className="text-sm text-gray-600 flex items-center gap-2">
-                        <span></span>
+                        <span>📱</span>
                         {user.phone}
                       </p>
                     </td>
                     <td className="px-6 py-5 text-center">
                       {user.is_verified ? (
                         <div className="inline-block bg-green-100 p-3 rounded-full">
-                          <span className="text-3xl"></span>
+                          <span className="text-3xl">✓</span>
                         </div>
                       ) : (
                         <div className="inline-block bg-red-100 p-3 rounded-full">
-                          <span className="text-3xl"></span>
+                          <span className="text-3xl">✕</span>
                         </div>
                       )}
                     </td>
@@ -265,7 +265,7 @@ export default function Users() {
                             {user.package_name}
                           </span>
                           <p className="text-xs text-gray-600 flex items-center gap-1">
-                            <span></span>
+                            <span>⏳</span>
                             Expires: {new Date(user.expired_at).toLocaleDateString('id-ID')}
                           </p>
                         </div>
@@ -278,7 +278,7 @@ export default function Users() {
                     </td>
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-2 text-gray-700">
-                        <span className="text-xl"></span>
+                        <span className="text-xl">📅</span>
                         <span className="font-medium">
                           {new Date(user.created_at).toLocaleDateString('id-ID', {
                             year: 'numeric',

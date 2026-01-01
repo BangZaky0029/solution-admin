@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getPayments, activatePayment } from '../api/controllers/paymentController';
 
 export default function Payments() {

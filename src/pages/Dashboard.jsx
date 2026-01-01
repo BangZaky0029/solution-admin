@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getStats, getRecentActivities } from '../api/controllers/statsController';
 
 export default function Dashboard() {
@@ -69,7 +69,7 @@ export default function Dashboard() {
             )}
           </p>
           <div className='flex items-center gap-2 text-white/70 text-sm'>
-            <span></span>
+            <span>●</span>
             <span>Live Data</span>
           </div>
         </div>
@@ -99,7 +99,7 @@ export default function Dashboard() {
         </div>
         
         <div className='text-2xl text-gray-400 group-hover:text-purple-500 group-hover:translate-x-1 transition-all duration-300'>
-          
+          →
         </div>
       </div>
     </a>
@@ -129,7 +129,7 @@ export default function Dashboard() {
         
         <div className='relative z-10'>
           <div className='flex items-center gap-3 mb-3'>
-            <span className='text-6xl animate-wave'></span>
+            <span className='text-6xl animate-wave'>👋</span>
             <div>
               <h1 className='text-4xl font-black text-white mb-2'>
                 {greeting}, Admin!
@@ -142,7 +142,7 @@ export default function Dashboard() {
           
           <div className='mt-6 flex flex-wrap gap-4'>
             <div className='bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 text-white flex items-center gap-2'>
-              <span className='text-xl'></span>
+              <span className='text-xl'>📅</span>
               <span className='font-medium'>
                 {new Date().toLocaleDateString('en-US', { 
                   weekday: 'long', 
@@ -153,7 +153,7 @@ export default function Dashboard() {
               </span>
             </div>
             <div className='bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 text-white flex items-center gap-2'>
-              <span className='text-xl'></span>
+              <span className='text-xl'>⏰</span>
               <span className='font-medium'>
                 {new Date().toLocaleTimeString('en-US', { 
                   hour: '2-digit', 
@@ -168,28 +168,28 @@ export default function Dashboard() {
       {/* Statistics Grid */}
       <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'>
         <StatCard
-          icon=''
+          icon='💳'
           title='Total Payments'
           value={stats.totalPayments}
           gradient='bg-gradient-to-br from-blue-500 to-blue-700'
           delay='0s'
         />
         <StatCard
-          icon=''
+          icon='⏳'
           title='Pending Payments'
           value={stats.pendingPayments}
           gradient='bg-gradient-to-br from-amber-500 to-orange-600'
           delay='0.1s'
         />
         <StatCard
-          icon=''
+          icon='✅'
           title='Confirmed'
           value={stats.confirmedPayments}
           gradient='bg-gradient-to-br from-emerald-500 to-green-700'
           delay='0.2s'
         />
         <StatCard
-          icon=''
+          icon='👥'
           title='Total Users'
           value={stats.totalUsers}
           gradient='bg-gradient-to-br from-purple-500 to-purple-700'
@@ -201,7 +201,7 @@ export default function Dashboard() {
       <div className='bg-gradient-to-br from-gray-50 to-gray-100 rounded-3xl p-8 shadow-xl'>
         <div className='flex items-center gap-3 mb-6'>
           <div className='bg-gradient-to-r from-purple-500 to-indigo-500 rounded-xl p-3'>
-            <span className='text-3xl'></span>
+            <span className='text-3xl'>⚡</span>
           </div>
           <h2 className='text-2xl font-bold text-gray-800'>Quick Actions</h2>
         </div>
@@ -209,21 +209,21 @@ export default function Dashboard() {
         <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
           <QuickActionCard
             href='/payments'
-            icon=''
+            icon='👁️'
             title='View Payments'
             description='Manage pending confirmations'
             color='bg-blue-500'
           />
           <QuickActionCard
             href='/packages'
-            icon=''
+            icon='📦'
             title='Manage Packages'
             description='Create and edit packages'
             color='bg-green-500'
           />
           <QuickActionCard
             href='/users'
-            icon=''
+            icon='👤'
             title='View Users'
             description='Manage user accounts'
             color='bg-purple-500'
@@ -237,7 +237,7 @@ export default function Dashboard() {
         <div className='bg-white rounded-3xl p-8 shadow-xl border border-gray-100'>
           <div className='flex items-center gap-3 mb-6'>
             <div className='bg-gradient-to-r from-pink-500 to-rose-500 rounded-xl p-3'>
-              <span className='text-2xl'></span>
+              <span className='text-2xl'>📊</span>
             </div>
             <h2 className='text-xl font-bold text-gray-800'>Recent Activity</h2>
           </div>
@@ -259,7 +259,7 @@ export default function Dashboard() {
             ) : (
               <div className='text-center py-12'>
                 <div className='inline-block bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl p-6 mb-4'>
-                  <span className='text-6xl'></span>
+                  <span className='text-6xl'>📭</span>
                 </div>
                 <p className='text-gray-600 font-medium'>No recent activity</p>
                 <p className='text-sm text-gray-400 mt-2'>Activity will appear here</p>
@@ -272,7 +272,7 @@ export default function Dashboard() {
         <div className='bg-white rounded-3xl p-8 shadow-xl border border-gray-100'>
           <div className='flex items-center gap-3 mb-6'>
             <div className='bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl p-3'>
-              <span className='text-2xl'></span>
+              <span className='text-2xl'>🖥️</span>
             </div>
             <h2 className='text-xl font-bold text-gray-800'>System Status</h2>
           </div>
