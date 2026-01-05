@@ -1,4 +1,6 @@
-﻿import api from '../api';
+﻿// C:\codingVibes\nuansasolution\.mainweb\payment-tools\gateway_apto-admin\src\api\controllers\statsController.js
+
+import api from '../api';
 
 export const getStats = async () => {
   const response = await api.get('/stats');

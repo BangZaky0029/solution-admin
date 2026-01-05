@@ -1,11 +1,13 @@
-﻿import api from '../api';
+﻿// C:\codingVibes\nuansasolution\.mainweb\payment-tools\gateway_apto-admin\src\api\controllers\paymentController.js
 
-export const getPayments = async () => {
-  const response = await api.get('/admin/payments');
-  return response.data;
-};
+import api from '../api';
 
-export const activatePayment = async (data) => {
-  const response = await api.post('/admin/activate', data);
-  return response.data;
-};
+  export const getPayments = async () => {
+    const response = await api.get('/admin/payments');
+    return response.data;
+  };
+
+  export const activatePayment = async (data) => {
+    const response = await api.post('/admin/activate', data);
+    return response.data;
+  };
