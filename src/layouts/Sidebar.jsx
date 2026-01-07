@@ -8,6 +8,7 @@ export default function Sidebar() {
     { path: '/payments', label: 'Payments', icon: '💳', gradient: 'from-amber-500 to-orange-600' },
     { path: '/packages', label: 'Packages', icon: '📦', gradient: 'from-green-500 to-emerald-600' },
     { path: '/users', label: 'Users', icon: '👥', gradient: 'from-purple-500 to-purple-600' },
+    { path: '/whatsapp', label: 'WhatsApp Bot', icon: '💬', gradient: 'from-green-400 to-emerald-500' }, // 🆕
   ];
 
   const handleLogout = () => {
@@ -143,7 +144,7 @@ export default function Sidebar() {
       {/* Footer */}
       <div className="relative p-4 text-center border-t border-white/10">
         <p className="text-xs text-gray-500">
-          v2.0 • Made with <span className="text-red-400">♥</span>
+          v2.1 • Made with <span className="text-red-400">♥</span>
         </p>
       </div>
     </aside>

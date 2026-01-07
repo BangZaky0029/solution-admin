@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import Payments from './pages/Payments';
 import Packages from './pages/Packages';
 import Users from './pages/Users';
+import WhatsAppConnector from './pages/WhatsAppConnector'; // 🆕
 import AdminLayout from './layouts/AdminLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -20,6 +21,7 @@ export default function App() {
             <Route path="/payments" element={<Payments />} />
             <Route path="/packages" element={<Packages />} />
             <Route path="/users" element={<Users />} />
+            <Route path="/whatsapp" element={<WhatsAppConnector />} /> {/* 🆕 */}
           </Route>
         </Route>
       </Routes>
