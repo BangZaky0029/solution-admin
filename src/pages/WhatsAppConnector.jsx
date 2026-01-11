@@ -1,3 +1,5 @@
+// C:\codingVibes\nuansasolution\.mainweb\payments\solution-admin\src\pages\WhatsAppConnector.jsx
+
 import { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import api from '../api/api';
@@ -27,36 +29,34 @@ export default function WhatsAppConnector() {
   }, []);
 
   const initializeSocket = () => {
-    // Connect to Socket.IO server
-    const baseURL = import.meta.env.VITE_API_BASE_URL.replace('/api', '');
-    socketRef.current = io(baseURL, {
-      transports: ['websocket', 'polling']
-    });
+  socketRef.current = io(import.meta.env.VITE_SOCKET_URL, {
+    transports: ['websocket'],
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000,
+  });
 
-    socketRef.current.on('connect', () => {
-      console.log('✅ Socket.IO connected');
-    });
+  socketRef.current.on('connect', () => {
+    console.log('✅ Socket.IO connected:', socketRef.current.id);
+  });
 
-    // Listen for WhatsApp QR updates
-    socketRef.current.on('whatsapp-qr', (data) => {
-      console.log('📱 QR Code received via socket');
-      setQrCode(data.qr);
-      setStatus(data.status);
-    });
+  socketRef.current.on('whatsapp-qr', (data) => {
+    setQrCode(data.qr);
+    setStatus(data.status);
+  });
 
-    // Listen for WhatsApp status updates
-    socketRef.current.on('whatsapp-status', (data) => {
-      console.log('📊 Status update:', data.status);
-      setStatus(data.status);
-      if (data.status === 'ready') {
-        setQrCode(null);
-      }
-    });
+  socketRef.current.on('whatsapp-status', (data) => {
+    setStatus(data.status);
+    if (data.status === 'ready') {
+      setQrCode(null);
+    }
+  });
 
-    socketRef.current.on('disconnect', () => {
-      console.log('❌ Socket.IO disconnected');
-    });
-  };
+  socketRef.current.on('connect_error', (err) => {
+    console.error('❌ Socket error:', err.message);
+  });
+};
+
 
   const loadStatus = async () => {
     try {

@@ -14,15 +14,17 @@ export default function Users() {
   }, []);
 
   const fetchUsers = async () => {
-    try {
-      const data = await getUsers();
-      setUsers(data);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    const response = await getUsers();
+
+    // 🔥 AMBIL DATA ARRAY-NYA
+    setUsers(response.data || []);
+
+  } catch (error) {
+    console.error('Error fetching users:', error);
+  }
+};
+
 
   const getFilteredUsers = () => {
     let filtered = users;

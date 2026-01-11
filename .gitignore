@@ -1,26 +1,71 @@
-# Logs
-logs
-*.log
+# C:\codingVibes\nuansasolution\.mainweb\payments\solution-admin\.gitignore
+# =========================================
+# ENV & SECRETS (CRITICAL)
+# =========================================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+secrets/
+credentials/
+tokens/
+
+# =========================================
+# NODE / PACKAGE MANAGERS
+# =========================================
+node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# =========================================
+# BUILD OUTPUT
+# =========================================
+dist/
+dist-ssr/
+build/
+out/
+coverage/
 
-# Editor directories and files
+# =========================================
+# VITE / CACHE
+# =========================================
+.vite/
+*.local
+.cache/
+.eslintcache
+
+# =========================================
+# LOGS
+# =========================================
+logs/
+*.log
+
+# =========================================
+# OS FILES
+# =========================================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =========================================
+# IDE / EDITORS
+# =========================================
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
+.idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-.env
 
+# =========================================
+# GIT
+# =========================================
+.git/
+.gitignore.lock
