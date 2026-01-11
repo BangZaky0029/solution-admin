@@ -3,27 +3,28 @@
 import { useState, useEffect, useMemo } from 'react';
 import { getUsers } from '../api/controllers/userController';
 
-export default function Users() {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('all');
+  export default function Users() {
+    const [users, setUsers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState('');
+    const [filter, setFilter] = useState('all');
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+    useEffect(() => {
+      fetchUsers();
+    }, []);
 
-  const fetchUsers = async () => {
-  try {
-    const response = await getUsers();
+    const fetchUsers = async () => {
+      try {
+        const { data: usersData } = await getUsers(); // usersData = array user
+        setUsers(usersData || []);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    // 🔥 AMBIL DATA ARRAY-NYA
-    setUsers(response.data || []);
 
-  } catch (error) {
-    console.error('Error fetching users:', error);
-  }
-};
 
 
   const getFilteredUsers = () => {
