@@ -20,15 +20,13 @@ export default function WhatsAppConnector() {
   useEffect(() => {
     loadStatus();
     initializeSocket();
-
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
-    };
   }, []);
 
+
+
   const initializeSocket = () => {
+  if (socketRef.current) return;
+
   socketRef.current = io(import.meta.env.VITE_SOCKET_URL, {
     transports: ['websocket'],
     reconnection: true,
@@ -41,6 +39,7 @@ export default function WhatsAppConnector() {
   });
 
   socketRef.current.on('whatsapp-qr', (data) => {
+    console.log('📱 QR RECEIVED');
     setQrCode(data.qr);
     setStatus(data.status);
   });
@@ -56,6 +55,7 @@ export default function WhatsAppConnector() {
     console.error('❌ Socket error:', err.message);
   });
 };
+
 
 
   const loadStatus = async () => {
