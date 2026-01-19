@@ -1,4 +1,6 @@
-  // =========================================
+
+// KODE FE 
+// =========================================
   // FILE: WhatsAppConnector.jsx - FIXED
   // WhatsApp Connection Manager - Frontend
   // =========================================
@@ -9,20 +11,21 @@
 
   // Status normalization
   const normalizeStatus = (status) => {
-    const statusMap = {
+    const map = {
       'ready': 'ready',
       'authenticated': 'ready',
       'qr': 'qr',
       'connecting': 'connecting',
       'initializing': 'connecting',
-      'restarting': 'connecting',
+      'restarting': 'qr', // <- ubah jadi 'qr' supaya QR muncul
       'disconnected': 'disconnected',
       'logged_out': 'disconnected',
       'auth_failure': 'disconnected',
       'failed': 'disconnected'
     };
-    return statusMap[status] || 'disconnected';
+    return map[status] || 'disconnected';
   };
+
 
   export default function WhatsAppConnector() {
     const [status, setStatus] = useState('disconnected');
