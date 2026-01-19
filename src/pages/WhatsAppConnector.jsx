@@ -1,10 +1,13 @@
-// C:\codingVibes\nuansasolution\.mainweb\payments\solution-admin\src\pages\WhatsAppConnector.jsx
+// =========================================
+// FILE: WhatsAppConnector.jsx - FIXED
+// WhatsApp Connection Manager - Frontend
+// =========================================
 
 import { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import api from '../api/api';
 
-// Status normalization: map backend statuses to stable UI states
+// Status normalization
 const normalizeStatus = (status) => {
   const statusMap = {
     'ready': 'ready',
@@ -12,8 +15,11 @@ const normalizeStatus = (status) => {
     'qr': 'qr',
     'connecting': 'connecting',
     'initializing': 'connecting',
+    'restarting': 'connecting',
     'disconnected': 'disconnected',
-    'logged_out': 'disconnected'
+    'logged_out': 'disconnected',
+    'auth_failure': 'disconnected',
+    'failed': 'disconnected'
   };
   return statusMap[status] || 'disconnected';
 };
@@ -28,59 +34,76 @@ export default function WhatsAppConnector() {
   const [validatePhone, setValidatePhone] = useState('');
   const [validating, setValidating] = useState(false);
   const [validationResult, setValidationResult] = useState(null);
+  const [error, setError] = useState(null);
 
   const socketRef = useRef(null);
-  const socketReadyRef = useRef(false);
   const isMountedRef = useRef(true);
+  const reconnectTimeoutRef = useRef(null);
 
   useEffect(() => {
     isMountedRef.current = true;
     
-    // Step 1: Load initial status from REST API
     loadStatus();
-    
-    // Step 2: Initialize Socket.IO (becomes source of truth after connection)
     initializeSocket();
 
-    // Cleanup on unmount
     return () => {
       isMountedRef.current = false;
       cleanupSocket();
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
     };
   }, []);
 
   const initializeSocket = () => {
-    if (socketRef.current) return;
+    if (socketRef.current?.connected) {
+      console.log('Socket already connected');
+      return;
+    }
 
     const socket = io(import.meta.env.VITE_SOCKET_URL, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
+      reconnectionDelay: 2000,
+      reconnectionDelayMax: 10000,
+      timeout: 20000
     });
 
     socketRef.current = socket;
 
     socket.on('connect', () => {
       console.log('✅ Socket.IO connected:', socket.id);
-      socketReadyRef.current = true;
+      setError(null);
+      
+      // Request current status on connect
+      if (isMountedRef.current) {
+        socket.emit('request-qr');
+      }
     });
 
-    socket.on('disconnect', () => {
-      console.log('❌ Socket.IO disconnected');
-      socketReadyRef.current = false;
+    socket.on('disconnect', (reason) => {
+      console.log('❌ Socket.IO disconnected:', reason);
+      
+      if (reason === 'io server disconnect') {
+        // Server disconnected, try to reconnect manually
+        reconnectTimeoutRef.current = setTimeout(() => {
+          socket.connect();
+        }, 2000);
+      }
     });
 
     socket.on('whatsapp-qr', (data) => {
-      console.log('📱 QR RECEIVED');
+      console.log('📱 QR RECEIVED:', data.status);
       if (!isMountedRef.current) return;
       
       const normalizedStatus = normalizeStatus(data.status);
       setStatus(normalizedStatus);
       
-      // Only set QR if status is actually 'qr'
       if (normalizedStatus === 'qr' && data.qr) {
         setQrCode(data.qr);
+      } else {
+        setQrCode(null);
       }
     });
 
@@ -91,21 +114,45 @@ export default function WhatsAppConnector() {
       const normalizedStatus = normalizeStatus(data.status);
       setStatus(normalizedStatus);
       
-      // Clear QR code when connected or disconnected
       if (normalizedStatus === 'ready' || normalizedStatus === 'disconnected') {
         setQrCode(null);
+      }
+      
+      if (data.qr && normalizedStatus === 'qr') {
+        setQrCode(data.qr);
+      }
+    });
+
+    socket.on('whatsapp-error', (data) => {
+      console.error('❌ WhatsApp error:', data.message);
+      if (isMountedRef.current) {
+        setError(data.message);
       }
     });
 
     socket.on('connect_error', (err) => {
-      console.error('❌ Socket error:', err.message);
+      console.error('❌ Socket connection error:', err.message);
+      if (isMountedRef.current) {
+        setError('Connection error. Retrying...');
+      }
     });
 
     socket.on('reconnect', (attemptNumber) => {
       console.log('🔄 Socket reconnected after', attemptNumber, 'attempts');
-      // Re-sync status after reconnection
       if (isMountedRef.current) {
+        setError(null);
         loadStatus();
+      }
+    });
+
+    socket.on('reconnect_error', (error) => {
+      console.error('❌ Reconnection error:', error.message);
+    });
+
+    socket.on('reconnect_failed', () => {
+      console.error('❌ Reconnection failed');
+      if (isMountedRef.current) {
+        setError('Failed to reconnect to server');
       }
     });
   };
@@ -115,7 +162,6 @@ export default function WhatsAppConnector() {
       socketRef.current.removeAllListeners();
       socketRef.current.close();
       socketRef.current = null;
-      socketReadyRef.current = false;
     }
   };
 
@@ -126,23 +172,21 @@ export default function WhatsAppConnector() {
       if (!isMountedRef.current) return;
       
       const normalizedStatus = normalizeStatus(response.data.status);
+      setStatus(normalizedStatus);
       
-      // Only update state if socket is not yet the source of truth
-      // or if we're doing initial load
-      if (!socketReadyRef.current || loading) {
-        setStatus(normalizedStatus);
-        
-        if (normalizedStatus === 'qr' && response.data.qrCode) {
-          setQrCode(response.data.qrCode);
-        } else {
-          setQrCode(null);
-        }
+      if (normalizedStatus === 'qr' && response.data.qrCode) {
+        setQrCode(response.data.qrCode);
+      } else {
+        setQrCode(null);
       }
+      
+      setError(null);
     } catch (error) {
       console.error('Error loading status:', error);
       if (isMountedRef.current) {
         setStatus('disconnected');
         setQrCode(null);
+        setError('Failed to load WhatsApp status');
       }
     } finally {
       if (isMountedRef.current) {
@@ -158,16 +202,26 @@ export default function WhatsAppConnector() {
 
     try {
       setLoading(true);
+      setError(null);
+      
       await api.post('/whatsapp/restart');
       
-      // Optimistic UI update
       if (isMountedRef.current) {
         setStatus('connecting');
         setQrCode(null);
       }
+      
+      // Reload status after 3 seconds
+      setTimeout(() => {
+        if (isMountedRef.current) {
+          loadStatus();
+        }
+      }, 3000);
     } catch (error) {
       console.error('Error restarting:', error);
-      alert('Failed to restart WhatsApp connection');
+      if (isMountedRef.current) {
+        setError(error.response?.data?.message || 'Failed to restart WhatsApp connection');
+      }
     } finally {
       if (isMountedRef.current) {
         setLoading(false);
@@ -182,16 +236,19 @@ export default function WhatsAppConnector() {
 
     try {
       setLoading(true);
+      setError(null);
+      
       await api.post('/whatsapp/disconnect');
       
-      // Optimistic UI update
       if (isMountedRef.current) {
         setStatus('disconnected');
         setQrCode(null);
       }
     } catch (error) {
       console.error('Error disconnecting:', error);
-      alert('Failed to disconnect WhatsApp');
+      if (isMountedRef.current) {
+        setError(error.response?.data?.message || 'Failed to disconnect WhatsApp');
+      }
     } finally {
       if (isMountedRef.current) {
         setLoading(false);
@@ -209,6 +266,8 @@ export default function WhatsAppConnector() {
 
     try {
       setSending(true);
+      setError(null);
+      
       const response = await api.post('/whatsapp/send-test', {
         phoneNumber: testPhone,
         message: testMessage
@@ -242,6 +301,7 @@ export default function WhatsAppConnector() {
     try {
       setValidating(true);
       setValidationResult(null);
+      setError(null);
       
       const response = await api.post('/whatsapp/validate-number', {
         phoneNumber: validatePhone
@@ -313,6 +373,25 @@ export default function WhatsAppConnector() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Error Alert */}
+      {error && (
+        <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">⚠️</span>
+            <div>
+              <p className="font-bold text-red-800">Error</p>
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="ml-auto text-red-400 hover:text-red-600"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="relative overflow-hidden bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 rounded-3xl p-8 shadow-2xl">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full opacity-10 transform translate-x-1/2 -translate-y-1/2"></div>
@@ -390,7 +469,7 @@ export default function WhatsAppConnector() {
               </div>
             )}
 
-            {status === 'connecting' && (
+            {status === 'connecting' && !qrCode && (
               <div className="inline-block">
                 <div className="w-32 h-32 border-8 border-green-200 border-t-green-500 rounded-full animate-spin"></div>
               </div>
