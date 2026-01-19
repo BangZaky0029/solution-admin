@@ -4,6 +4,20 @@ import { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import api from '../api/api';
 
+// Status normalization: map backend statuses to stable UI states
+const normalizeStatus = (status) => {
+  const statusMap = {
+    'ready': 'ready',
+    'authenticated': 'ready',
+    'qr': 'qr',
+    'connecting': 'connecting',
+    'initializing': 'connecting',
+    'disconnected': 'disconnected',
+    'logged_out': 'disconnected'
+  };
+  return statusMap[status] || 'disconnected';
+};
+
 export default function WhatsAppConnector() {
   const [status, setStatus] = useState('disconnected');
   const [qrCode, setQrCode] = useState(null);
@@ -16,57 +30,124 @@ export default function WhatsAppConnector() {
   const [validationResult, setValidationResult] = useState(null);
 
   const socketRef = useRef(null);
+  const socketReadyRef = useRef(false);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
+    isMountedRef.current = true;
+    
+    // Step 1: Load initial status from REST API
     loadStatus();
+    
+    // Step 2: Initialize Socket.IO (becomes source of truth after connection)
     initializeSocket();
+
+    // Cleanup on unmount
+    return () => {
+      isMountedRef.current = false;
+      cleanupSocket();
+    };
   }, []);
 
-
-
   const initializeSocket = () => {
-  if (socketRef.current) return;
+    if (socketRef.current) return;
 
-  socketRef.current = io(import.meta.env.VITE_SOCKET_URL, {
-    transports: ['websocket'],
-    reconnection: true,
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000,
-  });
+    const socket = io(import.meta.env.VITE_SOCKET_URL, {
+      transports: ['websocket'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
 
-  socketRef.current.on('connect', () => {
-    console.log('✅ Socket.IO connected:', socketRef.current.id);
-  });
+    socketRef.current = socket;
 
-  socketRef.current.on('whatsapp-qr', (data) => {
-    console.log('📱 QR RECEIVED');
-    setQrCode(data.qr);
-    setStatus(data.status);
-  });
+    socket.on('connect', () => {
+      console.log('✅ Socket.IO connected:', socket.id);
+      socketReadyRef.current = true;
+    });
 
-  socketRef.current.on('whatsapp-status', (data) => {
-    setStatus(data.status);
-    if (data.status === 'ready') {
-      setQrCode(null);
+    socket.on('disconnect', () => {
+      console.log('❌ Socket.IO disconnected');
+      socketReadyRef.current = false;
+    });
+
+    socket.on('whatsapp-qr', (data) => {
+      console.log('📱 QR RECEIVED');
+      if (!isMountedRef.current) return;
+      
+      const normalizedStatus = normalizeStatus(data.status);
+      setStatus(normalizedStatus);
+      
+      // Only set QR if status is actually 'qr'
+      if (normalizedStatus === 'qr' && data.qr) {
+        setQrCode(data.qr);
+      }
+    });
+
+    socket.on('whatsapp-status', (data) => {
+      console.log('📊 Status update:', data.status);
+      if (!isMountedRef.current) return;
+      
+      const normalizedStatus = normalizeStatus(data.status);
+      setStatus(normalizedStatus);
+      
+      // Clear QR code when connected or disconnected
+      if (normalizedStatus === 'ready' || normalizedStatus === 'disconnected') {
+        setQrCode(null);
+      }
+    });
+
+    socket.on('connect_error', (err) => {
+      console.error('❌ Socket error:', err.message);
+    });
+
+    socket.on('reconnect', (attemptNumber) => {
+      console.log('🔄 Socket reconnected after', attemptNumber, 'attempts');
+      // Re-sync status after reconnection
+      if (isMountedRef.current) {
+        loadStatus();
+      }
+    });
+  };
+
+  const cleanupSocket = () => {
+    if (socketRef.current) {
+      socketRef.current.removeAllListeners();
+      socketRef.current.close();
+      socketRef.current = null;
+      socketReadyRef.current = false;
     }
-  });
-
-  socketRef.current.on('connect_error', (err) => {
-    console.error('❌ Socket error:', err.message);
-  });
-};
-
-
+  };
 
   const loadStatus = async () => {
     try {
       const response = await api.get('/whatsapp/status');
-      setStatus(response.data.status);
-      setQrCode(response.data.qrCode);
+      
+      if (!isMountedRef.current) return;
+      
+      const normalizedStatus = normalizeStatus(response.data.status);
+      
+      // Only update state if socket is not yet the source of truth
+      // or if we're doing initial load
+      if (!socketReadyRef.current || loading) {
+        setStatus(normalizedStatus);
+        
+        if (normalizedStatus === 'qr' && response.data.qrCode) {
+          setQrCode(response.data.qrCode);
+        } else {
+          setQrCode(null);
+        }
+      }
     } catch (error) {
       console.error('Error loading status:', error);
+      if (isMountedRef.current) {
+        setStatus('disconnected');
+        setQrCode(null);
+      }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -78,13 +159,19 @@ export default function WhatsAppConnector() {
     try {
       setLoading(true);
       await api.post('/whatsapp/restart');
-      setStatus('connecting');
-      setQrCode(null);
+      
+      // Optimistic UI update
+      if (isMountedRef.current) {
+        setStatus('connecting');
+        setQrCode(null);
+      }
     } catch (error) {
       console.error('Error restarting:', error);
       alert('Failed to restart WhatsApp connection');
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -96,13 +183,19 @@ export default function WhatsAppConnector() {
     try {
       setLoading(true);
       await api.post('/whatsapp/disconnect');
-      setStatus('disconnected');
-      setQrCode(null);
+      
+      // Optimistic UI update
+      if (isMountedRef.current) {
+        setStatus('disconnected');
+        setQrCode(null);
+      }
     } catch (error) {
       console.error('Error disconnecting:', error);
       alert('Failed to disconnect WhatsApp');
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -121,14 +214,20 @@ export default function WhatsAppConnector() {
         message: testMessage
       });
 
-      alert('✅ ' + response.data.message);
-      setTestPhone('');
-      setTestMessage('');
+      if (isMountedRef.current) {
+        alert('✅ ' + response.data.message);
+        setTestPhone('');
+        setTestMessage('');
+      }
     } catch (error) {
       const message = error.response?.data?.message || 'Failed to send message';
-      alert('❌ ' + message);
+      if (isMountedRef.current) {
+        alert('❌ ' + message);
+      }
     } finally {
-      setSending(false);
+      if (isMountedRef.current) {
+        setSending(false);
+      }
     }
   };
 
@@ -148,12 +247,18 @@ export default function WhatsAppConnector() {
         phoneNumber: validatePhone
       });
 
-      setValidationResult(response.data);
+      if (isMountedRef.current) {
+        setValidationResult(response.data);
+      }
     } catch (error) {
       const message = error.response?.data?.message || 'Failed to validate number';
-      alert('❌ ' + message);
+      if (isMountedRef.current) {
+        alert('❌ ' + message);
+      }
     } finally {
-      setValidating(false);
+      if (isMountedRef.current) {
+        setValidating(false);
+      }
     }
   };
 
