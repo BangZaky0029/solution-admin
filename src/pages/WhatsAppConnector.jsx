@@ -1,521 +1,345 @@
-// =========================================
-// FILE: WhatsAppConnector.jsx - RESTART FIX
-// =========================================
-
-import { useState, useEffect, useRef } from 'react';
-import { io } from 'socket.io-client';
-import api from '../api/api';
-
-const normalizeStatus = (status) => {
-  const map = {
-    'ready': 'ready',
-    'authenticated': 'ready',
-    'qr': 'qr',
-    'connecting': 'connecting',
-    'initializing': 'connecting',
-    'restarting': 'connecting', // Show as connecting, not QR
-    'disconnected': 'disconnected',
-    'logged_out': 'disconnected',
-    'auth_failure': 'disconnected',
-    'failed': 'disconnected'
-  };
-  return map[status] || 'disconnected';
-};
+import { useEffect, useRef, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { io } from 'socket.io-client'
+import api from '../api/api'
+import { Send, Loader2, CheckCircle2, XCircle, RefreshCw } from 'lucide-react'
 
 export default function WhatsAppConnector() {
-  const [status, setStatus] = useState('disconnected');
-  const [qrCode, setQrCode] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [testPhone, setTestPhone] = useState('');
-  const [testMessage, setTestMessage] = useState('');
-  const [sending, setSending] = useState(false);
-  const [validatePhone, setValidatePhone] = useState('');
-  const [validating, setValidating] = useState(false);
-  const [validationResult, setValidationResult] = useState(null);
-  const [error, setError] = useState(null);
+  const socketRef = useRef(null)
 
-  const socketRef = useRef(null);
-  const isMountedRef = useRef(true);
-  const reconnectTimeoutRef = useRef(null);
+  const [status, setStatus] = useState('idle')
+  const [qr, setQr] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  // Send message form
+  const [sendForm, setSendForm] = useState({ phone: '', message: '' })
+  const [sending, setSending] = useState(false)
+  const [sendResult, setSendResult] = useState(null)
 
   useEffect(() => {
-    isMountedRef.current = true;
-    
-    loadStatus();
-    initializeSocket();
-
+    initSocket()
+    loadStatus()
     return () => {
-      isMountedRef.current = false;
-      cleanupSocket();
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  const initializeSocket = () => {
-    if (socketRef.current?.connected) {
-      console.log('Socket already connected');
-      return;
+      socketRef.current?.disconnect()
+      socketRef.current = null
     }
+  }, [])
 
-    const socket = io(import.meta.env.VITE_SOCKET_URL, {
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 2000,
-      reconnectionDelayMax: 10000,
-      timeout: 20000
-    });
-
-    socketRef.current = socket;
-
-    socket.on('connect', () => {
-      console.log('✅ Socket.IO connected:', socket.id);
-      setError(null);
-      
-      if (isMountedRef.current) {
-        socket.emit('request-qr');
-      }
-    });
-
-    socket.on('disconnect', (reason) => {
-      console.log('❌ Socket.IO disconnected:', reason);
-      
-      if (reason === 'io server disconnect') {
-        reconnectTimeoutRef.current = setTimeout(() => {
-          socket.connect();
-        }, 2000);
-      }
-    });
-
-    socket.on('whatsapp-qr', (data) => {
-      console.log('📱 QR RECEIVED:', data.status);
-      if (!isMountedRef.current) return;
-      
-      const normalizedStatus = normalizeStatus(data.status);
-      setStatus(normalizedStatus);
-      
-      if (normalizedStatus === 'qr' && data.qr) {
-        setQrCode(data.qr);
-      } else {
-        setQrCode(null);
-      }
-    });
-
-    socket.on('whatsapp-status', (data) => {
-      console.log('📊 Status update:', data.status);
-      if (!isMountedRef.current) return;
-      
-      const normalizedStatus = normalizeStatus(data.status);
-      setStatus(normalizedStatus);
-      
-      // Clear QR on ready/disconnected
-      if (normalizedStatus === 'ready' || normalizedStatus === 'disconnected') {
-        setQrCode(null);
-      }
-      
-      // Set QR if available
-      if (data.qr && normalizedStatus === 'qr') {
-        setQrCode(data.qr);
-      }
-    });
-
-    socket.on('whatsapp-error', (data) => {
-      console.error('❌ WhatsApp error:', data.message);
-      if (isMountedRef.current) {
-        setError(data.message);
-      }
-    });
-
-    socket.on('connect_error', (err) => {
-      console.error('❌ Socket connection error:', err.message);
-      if (isMountedRef.current) {
-        setError('Connection error. Retrying...');
-      }
-    });
-
-    socket.on('reconnect', (attemptNumber) => {
-      console.log('🔄 Socket reconnected after', attemptNumber, 'attempts');
-      if (isMountedRef.current) {
-        setError(null);
-        loadStatus();
-      }
-    });
-
-    socket.on('reconnect_error', (error) => {
-      console.error('❌ Reconnection error:', error.message);
-    });
-
-    socket.on('reconnect_failed', () => {
-      console.error('❌ Reconnection failed');
-      if (isMountedRef.current) {
-        setError('Failed to reconnect to server');
-      }
-    });
-  };
-
-  const cleanupSocket = () => {
-    if (socketRef.current) {
-      socketRef.current.removeAllListeners();
-      socketRef.current.close();
-      socketRef.current = null;
-    }
-  };
-
+  // =========================
+  // Load initial status
+  // =========================
   const loadStatus = async () => {
     try {
-      const response = await api.get('/whatsapp/status');
-      
-      if (!isMountedRef.current) return;
-      
-      const normalizedStatus = normalizeStatus(response.data.status);
-      setStatus(normalizedStatus);
-      
-      if (normalizedStatus === 'qr' && response.data.qrCode) {
-        setQrCode(response.data.qrCode);
-      } else {
-        setQrCode(null);
-      }
-      
-      setError(null);
-    } catch (error) {
-      console.error('Error loading status:', error);
-      if (isMountedRef.current) {
-        setStatus('disconnected');
-        setQrCode(null);
-        // Don't show error on initial load
-      }
+      const res = await api.get('/whatsapp/health')
+      setStatus(res.data.status)
+      setQr(res.data.qr || null)
+      setError(null)
+    } catch (err) {
+      console.error(err)
+      setError(err.message || 'Failed to load WhatsApp status')
+      setStatus('error')
     } finally {
-      if (isMountedRef.current) {
-        setLoading(false);
-      }
+      setLoading(false)
     }
-  };
-
-  const handleRestart = async () => {
-    if (!confirm('Restart WhatsApp connection? This will disconnect current session.')) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-      setStatus('connecting');
-      setQrCode(null);
-      
-      // ✅ FIX: Ignore network error karena connection restart
-      try {
-        await api.post('/whatsapp/restart');
-      } catch (err) {
-        // Ignore network error - normal saat restart
-        if (err.code !== 'ERR_NETWORK') {
-          throw err;
-        }
-      }
-      
-      // Wait longer for QR generation
-      await new Promise(resolve => setTimeout(resolve, 10000));
-      
-      if (isMountedRef.current) {
-        await loadStatus();
-      }
-    } catch (error) {
-      console.error('Error restarting:', error);
-      if (isMountedRef.current && error.code !== 'ERR_NETWORK') {
-        setError(error.response?.data?.message || 'Failed to restart WhatsApp connection');
-      }
-    } finally {
-      if (isMountedRef.current) {
-        setLoading(false);
-      }
-    }
-  };
-
-  const handleDisconnect = async () => {
-    if (!confirm('Disconnect WhatsApp? You will need to scan QR code again.')) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-      
-      await api.post('/whatsapp/disconnect');
-      
-      if (isMountedRef.current) {
-        setStatus('disconnected');
-        setQrCode(null);
-      }
-    } catch (error) {
-      console.error('Error disconnecting:', error);
-      if (isMountedRef.current) {
-        setError(error.response?.data?.message || 'Failed to disconnect WhatsApp');
-      }
-    } finally {
-      if (isMountedRef.current) {
-        setLoading(false);
-      }
-    }
-  };
-
-  const handleSendTest = async (e) => {
-    e.preventDefault();
-    
-    if (!testPhone || !testMessage) {
-      alert('Please fill in all fields');
-      return;
-    }
-
-    try {
-      setSending(true);
-      setError(null);
-      
-      const response = await api.post('/whatsapp/send-test', {
-        phoneNumber: testPhone,
-        message: testMessage
-      });
-
-      if (isMountedRef.current) {
-        alert('✅ ' + response.data.message);
-        setTestPhone('');
-        setTestMessage('');
-      }
-    } catch (error) {
-      const message = error.response?.data?.message || 'Failed to send message';
-      if (isMountedRef.current) {
-        alert('❌ ' + message);
-      }
-    } finally {
-      if (isMountedRef.current) {
-        setSending(false);
-      }
-    }
-  };
-
-  const handleValidate = async (e) => {
-    e.preventDefault();
-    
-    if (!validatePhone) {
-      alert('Please enter a phone number');
-      return;
-    }
-
-    try {
-      setValidating(true);
-      setValidationResult(null);
-      setError(null);
-      
-      const response = await api.post('/whatsapp/validate-number', {
-        phoneNumber: validatePhone
-      });
-
-      if (isMountedRef.current) {
-        setValidationResult(response.data);
-      }
-    } catch (error) {
-      const message = error.response?.data?.message || 'Failed to validate number';
-      if (isMountedRef.current) {
-        alert('❌ ' + message);
-      }
-    } finally {
-      if (isMountedRef.current) {
-        setValidating(false);
-      }
-    }
-  };
-
-  const getStatusBadge = () => {
-    switch (status) {
-      case 'ready':
-        return (
-          <div className="flex items-center gap-3 bg-green-100 border-2 border-green-300 rounded-2xl px-6 py-3">
-            <div className="w-4 h-4 bg-green-500 rounded-full animate-pulse"></div>
-            <span className="font-black text-green-800 text-lg">✅ Connected</span>
-          </div>
-        );
-      case 'qr':
-        return (
-          <div className="flex items-center gap-3 bg-yellow-100 border-2 border-yellow-300 rounded-2xl px-6 py-3">
-            <div className="w-4 h-4 bg-yellow-500 rounded-full animate-pulse"></div>
-            <span className="font-black text-yellow-800 text-lg">📱 Scan QR Code</span>
-          </div>
-        );
-      case 'connecting':
-        return (
-          <div className="flex items-center gap-3 bg-blue-100 border-2 border-blue-300 rounded-2xl px-6 py-3">
-            <div className="w-4 h-4 bg-blue-500 rounded-full animate-pulse"></div>
-            <span className="font-black text-blue-800 text-lg">🔄 Connecting...</span>
-          </div>
-        );
-      default:
-        return (
-          <div className="flex items-center gap-3 bg-red-100 border-2 border-red-300 rounded-2xl px-6 py-3">
-            <div className="w-4 h-4 bg-red-500 rounded-full"></div>
-            <span className="font-black text-red-800 text-lg">❌ Disconnected</span>
-          </div>
-        );
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="relative w-24 h-24 mx-auto mb-6">
-            <div className="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full animate-spin opacity-75"></div>
-            <div className="absolute inset-2 bg-white rounded-full flex items-center justify-center">
-              <span className="text-4xl">💬</span>
-            </div>
-          </div>
-          <p className="text-gray-600 font-semibold">Loading WhatsApp connection...</p>
-        </div>
-      </div>
-    );
   }
 
+  // =========================
+  // Socket.IO init
+  // =========================
+  const initSocket = () => {
+    const socket = io(import.meta.env.VITE_SOCKET_URL, { transports: ['websocket'] })
+    socketRef.current = socket
+
+    socket.on('connect', () => console.log('✅ Socket connected'))
+    socket.on('whatsapp-status', (data) => {
+      console.log('📡 WA STATUS:', data)
+      setStatus(data.status)
+      setQr(data.qr || null)
+    })
+    socket.on('disconnect', () => console.log('❌ Socket disconnected'))
+  }
+
+  // =========================
+  // Handle send message
+  // =========================
+  const handleSendMessage = async (e) => {
+    e.preventDefault()
+    setSending(true)
+    setSendResult(null)
+
+    try {
+      const res = await api.post('/whatsapp/send-message', {
+        phone: sendForm.phone,
+        message: sendForm.message,
+      })
+
+      setSendResult({ success: true, message: res.data.message, sentTo: res.data.sentTo })
+      setSendForm({ phone: '', message: '' })
+    } catch (err) {
+      setSendResult({
+        success: false,
+        message: err.response?.data?.message || err.message || 'Gagal mengirim pesan',
+      })
+    } finally {
+      setSending(false)
+    }
+  }
+
+  // =========================
+  // Status config
+  // =========================
+  const statusConfig = {
+    idle: { color: 'bg-gray-100 text-gray-700 border-gray-300', label: 'Idle', icon: '⏸️' },
+    qr: { color: 'bg-blue-100 text-blue-700 border-blue-300', label: 'Awaiting Scan', icon: '📱' },
+    ready: { color: 'bg-green-100 text-green-700 border-green-300', label: 'Connected', icon: '✅' },
+    disconnected: { color: 'bg-yellow-100 text-yellow-700 border-yellow-300', label: 'Disconnected', icon: '⚠️' },
+    error: { color: 'bg-red-100 text-red-700 border-red-300', label: 'Error', icon: '❌' },
+  }
+  const currentStatus = statusConfig[status] || statusConfig.idle
+
+  // =========================
+  // Render UI
+  // =========================
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Error Alert */}
-      {error && (
-        <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">⚠️</span>
+    <div className="w-full h-full p-6 bg-gray-50">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="max-w-4xl mx-auto space-y-6"
+      >
+        {/* Connection Status Card */}
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-green-500 to-green-600 px-8 py-6 flex items-center gap-4">
+            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-2xl">💬</div>
             <div>
-              <p className="font-bold text-red-800">Error</p>
-              <p className="text-red-600 text-sm">{error}</p>
+              <h1 className="text-2xl font-bold text-white">WhatsApp Connector</h1>
+              <p className="text-green-100 text-sm mt-1">Manage WhatsApp Connection</p>
             </div>
-            <button
-              onClick={() => setError(null)}
-              className="ml-auto text-red-400 hover:text-red-600"
-            >
-              ✕
-            </button>
+          </div>
+
+          {/* Content */}
+          <div className="p-8">
+            <AnimatePresence mode="sync">
+              {/* Loading */}
+              {loading && (
+                <motion.div
+                  key="loading"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="text-center py-12"
+                >
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                    className="w-16 h-16 mx-auto mb-4 border-4 border-green-500 border-t-transparent rounded-full"
+                  />
+                  <p className="text-gray-600 font-medium">Initializing WhatsApp connection...</p>
+                </motion.div>
+              )}
+
+              {/* Error */}
+              {!loading && error && (
+                <motion.div
+                  key="error"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="bg-red-50 border-2 border-red-200 rounded-xl p-6"
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">❌</span>
+                    <div>
+                      <h3 className="font-semibold text-red-800 mb-1">Connection Error</h3>
+                      <p className="text-red-600 text-sm">{error}</p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Status Badge */}
+              {!loading && !error && (
+                <motion.div key="status-badge" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
+                  <motion.div
+                    initial={{ scale: 0.9 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 300 }}
+                    className={`inline-flex items-center gap-2 px-6 py-3 rounded-full border-2 font-semibold ${currentStatus.color}`}
+                  >
+                    <span className="text-xl">{currentStatus.icon}</span>
+                    <span>Status: {currentStatus.label}</span>
+                  </motion.div>
+                </motion.div>
+              )}
+
+              {/* QR */}
+              {!loading && !error && status === 'qr' && qr && (
+                <motion.div
+                  key="qr"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ type: 'spring', stiffness: 200 }}
+                  className="text-center space-y-6"
+                >
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-8">
+                    <p className="text-gray-700 font-medium mb-6">Scan QR menggunakan WhatsApp di HP Anda</p>
+                    <motion.div
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: 0.2 }}
+                      className="bg-white p-6 rounded-2xl shadow-lg inline-block"
+                    >
+                      <img src={qr} alt="QR Code" className="w-72 h-72 mx-auto" />
+                    </motion.div>
+                    <p className="text-sm text-gray-500 mt-6">Buka WhatsApp → Settings → Linked Devices → Link a Device</p>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Ready */}
+              {!loading && !error && status === 'ready' && (
+                <motion.div
+                  key="ready"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ type: 'spring', stiffness: 200 }}
+                  className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-8 text-center"
+                >
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.2, type: 'spring', stiffness: 300 }}
+                    className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-4"
+                  >
+                    ✓
+                  </motion.div>
+                  <h3 className="text-2xl font-bold text-green-800 mb-2">WhatsApp Connected Successfully</h3>
+                  <p className="text-green-600">Your WhatsApp is now connected and ready to use</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Footer */}
+          <div className="bg-gray-50 px-8 py-4 border-t border-gray-100">
+            <p className="text-xs text-gray-500 text-center">© 2026 Gateway Apto • Real-time connection via Socket.IO</p>
           </div>
         </div>
-      )}
 
-      {/* Header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 rounded-3xl p-8 shadow-2xl">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full opacity-10 transform translate-x-1/2 -translate-y-1/2"></div>
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white rounded-full opacity-10 transform -translate-x-1/2 translate-y-1/2"></div>
-
-        <div className="relative z-10">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
-                <span className="text-5xl">💬</span>
+        {/* Send Message Card */}
+        {!loading && status === 'ready' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-white rounded-2xl shadow-xl overflow-hidden"
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-8 py-6 flex items-center gap-4">
+              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-2xl">
+                <Send className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <h1 className="text-4xl font-black text-white mb-2">WhatsApp Connector</h1>
-                <p className="text-emerald-100 text-lg font-medium">
-                  Connect WhatsApp for automatic OTP delivery
-                </p>
+                <h2 className="text-2xl font-bold text-white">Send Message</h2>
+                <p className="text-blue-100 text-sm mt-1">Send WhatsApp message manually</p>
               </div>
             </div>
 
-            {getStatusBadge()}
-          </div>
+            {/* Form */}
+            <div className="p-8">
+              <form onSubmit={handleSendMessage} className="space-y-6">
+                {/* Phone Input */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Nomor WhatsApp <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: 081234567890"
+                    value={sendForm.phone}
+                    onChange={(e) => setSendForm({ ...sendForm, phone: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors"
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-2">Format: 08xxx atau +628xxx atau 628xxx</p>
+                </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-4">
-            <button
-              onClick={handleRestart}
-              disabled={loading}
-              className="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-6 py-3 rounded-xl font-bold transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span className="flex items-center gap-2">
-                <span className="text-xl">🔄</span>
-                Restart Connection
-              </span>
-            </button>
+                {/* Message Input */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Pesan <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    placeholder="Tulis pesan Anda di sini..."
+                    value={sendForm.message}
+                    onChange={(e) => setSendForm({ ...sendForm, message: e.target.value })}
+                    rows={5}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors resize-none"
+                    required
+                  />
+                </div>
 
-            {status === 'ready' && (
-              <button
-                onClick={handleDisconnect}
-                disabled={loading}
-                className="bg-red-500/80 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-bold transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <span className="flex items-center gap-2">
-                  <span className="text-xl">🔌</span>
-                  Disconnect
-                </span>
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  disabled={sending}
+                  className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-4 rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {sending ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Mengirim...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-5 h-5" />
+                      Kirim Pesan
+                    </>
+                  )}
+                </button>
+              </form>
 
-      {/* QR Code Section */}
-      {(status === 'qr' || status === 'connecting') && (
-        <div className="bg-white rounded-3xl p-8 shadow-2xl border border-gray-100">
-          <div className="text-center">
-            <div className="inline-block bg-gradient-to-br from-green-100 to-emerald-100 rounded-2xl p-6 mb-6">
-              <span className="text-6xl">📱</span>
+              {/* Send Result */}
+              <AnimatePresence>
+                {sendResult && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className={`mt-6 p-4 rounded-xl border-2 flex items-start gap-3 ${
+                      sendResult.success
+                        ? 'bg-green-50 border-green-200'
+                        : 'bg-red-50 border-red-200'
+                    }`}
+                  >
+                    {sendResult.success ? (
+                      <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <XCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+                    )}
+                    <div className="flex-1">
+                      <p className={`font-semibold ${sendResult.success ? 'text-green-800' : 'text-red-800'}`}>
+                        {sendResult.success ? 'Berhasil!' : 'Gagal!'}
+                      </p>
+                      <p className={`text-sm mt-1 ${sendResult.success ? 'text-green-600' : 'text-red-600'}`}>
+                        {sendResult.message}
+                      </p>
+                      {sendResult.sentTo && (
+                        <p className="text-xs text-gray-600 mt-2">Terkirim ke: {sendResult.sentTo}</p>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-            <h2 className="text-2xl font-black text-gray-800 mb-3">
-              {status === 'qr' ? 'Scan QR Code' : 'Connecting...'}
-            </h2>
-            <p className="text-gray-600 mb-8">
-              {status === 'qr' 
-                ? 'Open WhatsApp on your phone and scan this QR code'
-                : 'Please wait while we connect to WhatsApp...'}
-            </p>
-
-            {qrCode && status === 'qr' && (
-              <div className="inline-block bg-white p-6 rounded-3xl shadow-xl border-4 border-green-200">
-                <img 
-                  src={qrCode} 
-                  alt="WhatsApp QR Code" 
-                  className="w-80 h-80"
-                />
-              </div>
-            )}
-
-            {status === 'connecting' && !qrCode && (
-              <div className="inline-block">
-                <div className="w-32 h-32 border-8 border-green-200 border-t-green-500 rounded-full animate-spin"></div>
-              </div>
-            )}
-
-            <div className="mt-8 bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-200">
-              <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2 justify-center">
-                <span className="text-2xl">📝</span>
-                How to connect:
-              </h3>
-              <ol className="text-left text-gray-700 space-y-2 max-w-md mx-auto">
-                <li className="flex items-start gap-3">
-                  <span className="font-bold text-green-600">1.</span>
-                  <span>Open WhatsApp on your phone</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="font-bold text-green-600">2.</span>
-                  <span>Tap Menu (⋮) or Settings</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="font-bold text-green-600">3.</span>
-                  <span>Tap "Linked Devices"</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="font-bold text-green-600">4.</span>
-                  <span>Tap "Link a Device"</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="font-bold text-green-600">5.</span>
-                  <span>Scan the QR code above</span>
-                </li>
-              </ol>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Connected Info & Test Forms - Same as before */}
-      {status === 'ready' && (
-        <>
-          {/* ... rest of the component ... */}
-        </>
-      )}
+          </motion.div>
+        )}
+      </motion.div>
     </div>
-  );
+  )
 }
