@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { usePackages, useCreatePackage, useUpdatePackage, useDeletePackage } from '../hooks/usePackages';
 import { useFeatures } from '../hooks/useFeatures';
 import { useUIStore } from '../stores/uiStore';
-import { LoadingSpinner, EmptyState, Modal, Button, Input } from '../components/ui';
+import { LoadingSpinner, EmptyState, Modal, Button, Input, Textarea } from '../components/ui';
 import { packageSchema, PackageFormData } from '../lib/validations';
 import type { Package } from '../types';
 
@@ -74,6 +74,7 @@ const Packages = () => {
             duration_days: 30,
             features: '',
             feature_ids: [],
+            description: '',
         },
     });
 
@@ -92,16 +93,29 @@ const Packages = () => {
     const openModal = (pkg: Package | null = null) => {
         if (pkg) {
             setEditingPackage(pkg);
+            // Check if description is JSON (auto-generated) or custom text
+            let customDescription = '';
+            if (pkg.description) {
+                try {
+                    JSON.parse(pkg.description);
+                    // It's JSON, so it's auto-generated. Leave customDescription empty.
+                } catch {
+                    // It's NOT JSON, so it's a custom description (e.g. Trial).
+                    customDescription = pkg.description;
+                }
+            }
+
             reset({
                 name: pkg.name,
                 price: pkg.price,
                 duration_days: pkg.duration_days,
                 features: '', // Legacy ignored
                 feature_ids: pkg.feature_ids || [],
+                description: customDescription,
             });
         } else {
             setEditingPackage(null);
-            reset({ name: '', price: 0, duration_days: 30, features: '', feature_ids: [] });
+            reset({ name: '', price: 0, duration_days: 30, features: '', feature_ids: [], description: '' });
         }
         setShowModal(true);
     };
@@ -119,6 +133,7 @@ const Packages = () => {
             duration_days: Number(data.duration_days),
             feature_ids: data.feature_ids,
             features: '', // Legacy param
+            description: data.description, // Manual override
         };
 
         try {
@@ -168,10 +183,24 @@ const Packages = () => {
 
     // Helper to get feature names for a package
     const getPackageFeatureNames = (pkg: Package) => {
-        if (!pkg.feature_ids?.length) return [];
-        return pkg.feature_ids
-            .map(id => features.find(f => f.id === id)?.name)
-            .filter(Boolean) as string[];
+        // If description is NOT a JSON string, use it as the "feature" list (single item)
+        if (pkg.description) {
+            try {
+                const parsed = JSON.parse(pkg.description);
+                if (Array.isArray(parsed)) return parsed;
+            } catch {
+                return [pkg.description];
+            }
+        }
+
+        // Fallback to relational features
+        if (pkg.feature_ids?.length) {
+            return pkg.feature_ids
+                .map(id => features.find(f => f.id === id)?.name)
+                .filter(Boolean) as string[];
+        }
+
+        return [];
     };
 
     const gradients = [
@@ -186,21 +215,7 @@ const Packages = () => {
     }
 
     const PackageCard: FC<PackageCardProps> = ({ pkg, index }) => {
-        // Fallback to old features string if feature_ids not available (backward comaptibility)
-        let displayFeatures: string[] = getPackageFeatureNames(pkg);
-
-        // If relational features are empty, try parsing the legacy JSON string
-        if (displayFeatures.length === 0 && pkg.features) {
-            if (Array.isArray(pkg.features)) {
-                displayFeatures = pkg.features;
-            } else if (typeof pkg.features === 'string') {
-                try {
-                    displayFeatures = JSON.parse(pkg.features);
-                } catch {
-                    // ignore
-                }
-            }
-        }
+        const displayFeatures = getPackageFeatureNames(pkg);
 
         return (
             <div
@@ -287,11 +302,11 @@ const Packages = () => {
 
     return (
         <div className="space-y-6 animate-fade-in">
-            {/* Header */}
+            {/* Header and Filters (Same as before) */}
             <div className="relative overflow-hidden bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 rounded-3xl p-8 shadow-2xl">
+                {/* ... header content ... */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full opacity-10 transform translate-x-1/2 -translate-y-1/2" />
                 <div className="absolute bottom-0 left-0 w-48 h-48 bg-white rounded-full opacity-10 transform -translate-x-1/2 translate-y-1/2" />
-
                 <div className="relative z-10 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
@@ -304,14 +319,7 @@ const Packages = () => {
                             </p>
                         </div>
                     </div>
-
-                    <Button
-                        variant="ghost"
-                        onClick={() => openModal()}
-                        className="bg-white hover:bg-gray-50 text-emerald-600 shadow-xl"
-                        size="lg"
-                        icon="➕"
-                    >
+                    <Button variant="ghost" onClick={() => openModal()} className="bg-white hover:bg-gray-50 text-emerald-600 shadow-xl" size="lg" icon="➕">
                         <span className="hidden sm:inline">Create Package</span>
                     </Button>
                 </div>
@@ -319,30 +327,16 @@ const Packages = () => {
 
             {/* Filters */}
             <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
-                {/* Category Tabs */}
                 <div className="flex flex-wrap gap-2">
                     {categories.map(cat => (
-                        <button
-                            key={cat}
-                            onClick={() => setSelectedCategory(cat)}
-                            className={`px-4 py-2 rounded-xl font-bold text-sm transition-all duration-300 ${selectedCategory === cat
-                                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg scale-105'
-                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
-                        >
+                        <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-4 py-2 rounded-xl font-bold text-sm transition-all duration-300 ${selectedCategory === cat ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg scale-105' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
                             {cat}
                         </button>
                     ))}
                 </div>
-
-                {/* Duration Dropdown */}
                 <div className="flex items-center gap-3">
                     <span className="text-gray-500 font-bold text-sm">Duration:</span>
-                    <select
-                        value={selectedDuration}
-                        onChange={(e) => setSelectedDuration(e.target.value)}
-                        className="bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-2 font-semibold text-gray-700 focus:outline-none focus:border-purple-500 transition-colors"
-                    >
+                    <select value={selectedDuration} onChange={(e) => setSelectedDuration(e.target.value)} className="bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-2 font-semibold text-gray-700 focus:outline-none focus:border-purple-500 transition-colors">
                         {durations.map(dur => (
                             <option key={dur} value={dur}>{dur}</option>
                         ))}
@@ -358,16 +352,7 @@ const Packages = () => {
                     ))}
                 </div>
             ) : (
-                <EmptyState
-                    icon="📦"
-                    title="No packages found"
-                    description="Try adjusting your filters"
-                    action={
-                        <Button variant="ghost" onClick={() => { setSelectedCategory('All'); setSelectedDuration('All'); }} icon="🔄">
-                            Reset Filters
-                        </Button>
-                    }
-                />
+                <EmptyState icon="📦" title="No packages found" description="Try adjusting your filters" action={<Button variant="ghost" onClick={() => { setSelectedCategory('All'); setSelectedDuration('All'); }} icon="🔄">Reset Filters</Button>} />
             )}
 
             {/* Modal with Feature Selection */}
@@ -446,6 +431,20 @@ const Packages = () => {
                                 );
                             })}
                         </div>
+                    </div>
+
+                    <div className="border-t pt-4">
+                        <Textarea
+                            label="Description (Override)"
+                            icon="📝"
+                            placeholder="Optional: Manually override the feature list description (e.g. for Trial packages). Leave empty to auto-generate from features."
+                            rows={3}
+                            error={errors.description?.message}
+                            {...register('description')}
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                            * Leave empty to automatically generate description from selected features.
+                        </p>
                     </div>
 
                     <div className="flex gap-3 pt-4">

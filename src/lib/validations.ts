@@ -13,6 +13,7 @@ export const packageSchema = z.object({
         .max(365, 'Duration cannot exceed 365 days'),
     features: z.string().optional(),
     feature_ids: z.array(z.number()).min(1, 'Select at least one feature'),
+    description: z.string().optional(),
 });
 
 export type PackageFormData = z.infer<typeof packageSchema>;

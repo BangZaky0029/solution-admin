@@ -23,6 +23,7 @@ export interface Package {
     duration_days: number;
     features: string[] | string;
     feature_ids?: number[];
+    description?: string; // Legacy/Manual override
     created_at?: string;
 }
 
@@ -30,8 +31,9 @@ export interface PackageFormData {
     name: string;
     price: string | number;
     duration_days: number;
-    features: string; // Legacy text input (for backward compatibility if needed, or we can remove)
-    feature_ids: number[]; // New relational input
+    features: string;
+    feature_ids: number[];
+    description?: string; // Optional manual override
 }
 
 // ============================================
