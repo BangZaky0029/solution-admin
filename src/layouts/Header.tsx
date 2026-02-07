@@ -24,7 +24,7 @@ const Header: FC = () => {
     ];
 
     return (
-        <header className="relative bg-white/80 backdrop-blur-xl shadow-lg px-6 py-4 border-b border-gray-200/50">
+        <header className="relative z-50 bg-white/80 backdrop-blur-xl shadow-lg px-6 py-4 border-b border-gray-200/50">
             {/* Decorative gradient line */}
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500"></div>
 
@@ -82,7 +82,7 @@ const Header: FC = () => {
 
                         {/* Notifications Dropdown */}
                         {showNotifications && (
-                            <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden z-50 animate-slide-down">
+                            <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden z-[9999] animate-slide-down">
                                 <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-4">
                                     <h3 className="font-bold text-white flex items-center gap-2">
                                         <span>🔔</span>
