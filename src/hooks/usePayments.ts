@@ -14,7 +14,7 @@ export const useActivatePayment = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (paymentId: string) => activatePayment({ payment_id: paymentId }),
+        mutationFn: (data: { payment_id: string }) => activatePayment(data),
         onSuccess: () => {
             // Invalidate payments query to refetch
             queryClient.invalidateQueries({ queryKey: queryKeys.payments });

@@ -41,6 +41,7 @@ export interface Payment {
     email: string;
     phone: string;
     proof_image?: string;
+    package_name?: string;
     status: 'pending' | 'confirmed' | 'rejected';
     created_at: string;
 }
@@ -123,7 +124,7 @@ export interface QuickActionCardProps {
     icon: string;
     title: string;
     description: string;
-    color: string;
+    color?: string;
 }
 
 export interface PackageCardProps {

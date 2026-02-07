@@ -1,102 +1,74 @@
-import { FC, useEffect, useState } from 'react';
-import { getPayments, activatePayment } from '../api/controllers/paymentController';
+import { useState, useMemo } from 'react';
+import { usePayments, useActivatePayment } from '../hooks/usePayments';
+import { useUIStore } from '../stores/uiStore';
+import { LoadingSpinner, EmptyState, Modal, Badge } from '../components/ui';
 import api from '../api/api';
 import type { Payment } from '../types';
 
 const imageBaseURL = (api?.defaults?.baseURL || import.meta.env.VITE_API_BASE_URL || '').replace(/\/api\/?$/, '');
 
-const Payments: FC = () => {
-    const [payments, setPayments] = useState<Payment[]>([]);
-    const [filteredPayments, setFilteredPayments] = useState<Payment[]>([]);
-    const [search, setSearch] = useState<string>('');
-    const [loading, setLoading] = useState<boolean>(true);
+const Payments = () => {
+    const [search, setSearch] = useState('');
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-    useEffect(() => {
-        loadPayments();
-    }, []);
+    // React Query hooks
+    const { data: payments = [], isLoading, isError, refetch } = usePayments();
+    const activateMutation = useActivatePayment();
+    const { addNotification } = useUIStore();
 
-    useEffect(() => {
-        filterPayments();
+    // Filtered payments with useMemo
+    const filteredPayments = useMemo(() => {
+        if (!search) return payments;
+        const searchLower = search.toLowerCase();
+        return payments.filter((p: Payment) =>
+            p.email?.toLowerCase().includes(searchLower) ||
+            p.phone?.includes(search)
+        );
     }, [search, payments]);
 
-    const loadPayments = async (): Promise<void> => {
-        try {
-            const data = await getPayments();
-            setPayments(data);
-            setFilteredPayments(data);
-        } catch (error) {
-            console.error('Error loading payments:', error);
-            alert('Failed to load payments');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const filterPayments = (): void => {
-        if (!search) {
-            setFilteredPayments(payments);
-            return;
-        }
-
-        const filtered = payments.filter(p =>
-            p.email.toLowerCase().includes(search.toLowerCase()) ||
-            p.phone.includes(search)
-        );
-        setFilteredPayments(filtered);
-    };
-
-    const activate = async (paymentId: string): Promise<void> => {
+    const handleActivate = async (paymentId: string) => {
         if (!confirm('Are you sure you want to activate this payment?')) return;
 
-        try {
-            await activatePayment({ payment_id: paymentId });
-            await loadPayments();
-            alert('✅ Payment activated successfully!');
-        } catch (error) {
-            console.error('Error activating payment:', error);
-            alert('❌ Failed to activate payment');
-        }
-    };
-
-    const ImageModal: FC = () => {
-        if (!selectedImage) return null;
-
-        return (
-            <div
-                className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in"
-                onClick={() => setSelectedImage(null)}
-            >
-                <div className="relative max-w-4xl max-h-full animate-scale-in">
-                    <button
-                        onClick={() => setSelectedImage(null)}
-                        className="absolute -top-12 right-0 bg-white/10 backdrop-blur-md hover:bg-red-500 text-white px-4 py-2 rounded-xl font-bold transition-all duration-300"
-                    >
-                        ✕ Close
-                    </button>
-                    <img
-                        src={selectedImage}
-                        alt="Payment Proof"
-                        className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl border-4 border-white/20"
-                    />
-                </div>
-            </div>
+        activateMutation.mutate(
+            { payment_id: paymentId },
+            {
+                onSuccess: () => {
+                    addNotification({
+                        type: 'success',
+                        title: 'Payment Activated!',
+                        message: 'Package has been activated successfully.',
+                    });
+                },
+                onError: () => {
+                    addNotification({
+                        type: 'error',
+                        title: 'Activation Failed',
+                        message: 'Failed to activate payment. Please try again.',
+                    });
+                },
+            }
         );
     };
 
-    if (loading) {
+    if (isLoading) {
+        return <LoadingSpinner size="lg" text="Loading payments..." icon="💳" />;
+    }
+
+    if (isError) {
         return (
-            <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                    <div className="relative w-24 h-24 mx-auto mb-6">
-                        <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-spin opacity-75"></div>
-                        <div className="absolute inset-2 bg-white rounded-full flex items-center justify-center">
-                            <span className="text-4xl">💳</span>
-                        </div>
-                    </div>
-                    <p className="text-gray-600 font-semibold">Loading payments...</p>
-                </div>
-            </div>
+            <EmptyState
+                icon="❌"
+                title="Failed to load payments"
+                description="Something went wrong. Please try again."
+                action={
+                    <button
+                        onClick={() => refetch()}
+                        className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-xl font-bold hover:scale-105 transition-transform"
+                    >
+                        Retry
+                    </button>
+                }
+            />
         );
     }
 
@@ -104,9 +76,8 @@ const Payments: FC = () => {
         <div className="space-y-6 animate-fade-in">
             {/* Header Card */}
             <div className="relative overflow-hidden bg-gradient-to-br from-amber-500 via-orange-500 to-pink-500 rounded-3xl p-8 shadow-2xl">
-                {/* Decorative elements */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full opacity-10 transform translate-x-1/2 -translate-y-1/2"></div>
-                <div className="absolute bottom-0 left-0 w-48 h-48 bg-white rounded-full opacity-10 transform -translate-x-1/2 translate-y-1/2"></div>
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full opacity-10 transform translate-x-1/2 -translate-y-1/2" />
+                <div className="absolute bottom-0 left-0 w-48 h-48 bg-white rounded-full opacity-10 transform -translate-x-1/2 translate-y-1/2" />
 
                 <div className="relative z-10">
                     <div className="flex items-center gap-4 mb-3">
@@ -114,9 +85,7 @@ const Payments: FC = () => {
                             <span className="text-5xl">💳</span>
                         </div>
                         <div>
-                            <h1 className="text-4xl font-black text-white mb-2">
-                                Payment Management
-                            </h1>
+                            <h1 className="text-4xl font-black text-white mb-2">Payment Management</h1>
                             <p className="text-orange-100 text-lg font-medium">
                                 Review and activate pending payment confirmations
                             </p>
@@ -129,13 +98,16 @@ const Payments: FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Pending Stats Card */}
                 <div className="lg:col-span-1 relative overflow-hidden bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl p-6 shadow-xl group hover:scale-105 transition-transform duration-300">
-                    <div className="absolute -right-8 -top-8 w-32 h-32 bg-white rounded-full opacity-10 group-hover:scale-150 transition-transform duration-500"></div>
+                    <div className="absolute -right-8 -top-8 w-32 h-32 bg-white rounded-full opacity-10 group-hover:scale-150 transition-transform duration-500" />
 
                     <div className="relative z-10">
                         <div className="flex items-center justify-between mb-4">
                             <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3">
                                 <span className="text-4xl">⏳</span>
                             </div>
+                            {activateMutation.isPending && (
+                                <Badge variant="warning">Processing...</Badge>
+                            )}
                         </div>
                         <p className="text-white/90 font-semibold mb-2">Pending Payments</p>
                         <p className="text-5xl font-black text-white">{filteredPayments.length}</p>
@@ -157,7 +129,7 @@ const Payments: FC = () => {
                             placeholder="Search by email or phone number..."
                             className="w-full px-6 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-300 focus:border-purple-500 transition-all duration-300 outline-none text-gray-800 font-medium"
                         />
-                        <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 opacity-0 group-focus-within:opacity-10 transition-opacity -z-10 blur-xl"></div>
+                        <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 opacity-0 group-focus-within:opacity-10 transition-opacity -z-10 blur-xl" />
 
                         {search && (
                             <button
@@ -174,15 +146,11 @@ const Payments: FC = () => {
             {/* Payments Table Card */}
             <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
                 {filteredPayments.length === 0 ? (
-                    <div className="text-center py-20">
-                        <div className="inline-block bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl p-8 mb-6">
-                            <span className="text-8xl">🎉</span>
-                        </div>
-                        <p className="text-2xl font-bold text-gray-800 mb-2">No pending payments</p>
-                        <p className="text-gray-600">
-                            {search ? 'Try different search terms' : 'All payments have been processed'}
-                        </p>
-                    </div>
+                    <EmptyState
+                        icon="🎉"
+                        title="No pending payments"
+                        description={search ? 'Try different search terms' : 'All payments have been processed'}
+                    />
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full">
@@ -193,6 +161,9 @@ const Payments: FC = () => {
                                     </th>
                                     <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
                                         Customer Info
+                                    </th>
+                                    <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
+                                        Package
                                     </th>
                                     <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
                                         Proof
@@ -206,7 +177,7 @@ const Payments: FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {filteredPayments.map((payment, index) => (
+                                {filteredPayments.map((payment: Payment, index: number) => (
                                     <tr
                                         key={payment.id}
                                         className="hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-all duration-300"
@@ -217,9 +188,7 @@ const Payments: FC = () => {
                                                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg">
                                                     #
                                                 </div>
-                                                <span className="font-bold text-gray-900">
-                                                    {payment.payment_id}
-                                                </span>
+                                                <span className="font-bold text-gray-900">{payment.payment_id || payment.id}</span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-5">
@@ -233,6 +202,11 @@ const Payments: FC = () => {
                                                     {payment.phone}
                                                 </p>
                                             </div>
+                                        </td>
+                                        <td className="px-6 py-5">
+                                            <Badge variant="purple" icon="📦">
+                                                {payment.package_name || 'N/A'}
+                                            </Badge>
                                         </td>
                                         <td className="px-6 py-5">
                                             {payment.proof_image ? (
@@ -261,13 +235,14 @@ const Payments: FC = () => {
                                         </td>
                                         <td className="px-6 py-5 text-center">
                                             <button
-                                                onClick={() => activate(payment.payment_id)}
-                                                className="group relative bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-6 py-3 rounded-xl font-bold transition-all duration-300 hover:scale-110 hover:shadow-2xl overflow-hidden"
+                                                onClick={() => handleActivate(String(payment.payment_id || payment.id))}
+                                                disabled={activateMutation.isPending}
+                                                className="group relative bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-6 py-3 rounded-xl font-bold transition-all duration-300 hover:scale-110 hover:shadow-2xl overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
-                                                <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-green-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                                <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-green-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                                                 <span className="relative flex items-center gap-2">
-                                                    <span className="text-xl">✅</span>
-                                                    Activate
+                                                    <span className="text-xl">{activateMutation.isPending ? '⏳' : '✅'}</span>
+                                                    {activateMutation.isPending ? 'Processing...' : 'Activate'}
                                                 </span>
                                             </button>
                                         </td>
@@ -279,7 +254,22 @@ const Payments: FC = () => {
                 )}
             </div>
 
-            <ImageModal />
+            {/* Image Modal */}
+            <Modal
+                isOpen={!!selectedImage}
+                onClose={() => setSelectedImage(null)}
+                title="Payment Proof"
+                icon="🖼️"
+                size="lg"
+            >
+                {selectedImage && (
+                    <img
+                        src={selectedImage}
+                        alt="Payment Proof"
+                        className="w-full max-h-[70vh] object-contain rounded-xl"
+                    />
+                )}
+            </Modal>
         </div>
     );
 };

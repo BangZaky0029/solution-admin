@@ -31,8 +31,8 @@ export const useUpdatePackage = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ id, data }: { id: number; data: CreatePackagePayload }) =>
-            updatePackage(id, data),
+        mutationFn: (payload: { id: number } & CreatePackagePayload) =>
+            updatePackage(payload.id, payload),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.packages });
         },
