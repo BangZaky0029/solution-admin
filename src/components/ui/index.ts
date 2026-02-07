@@ -7,3 +7,4 @@ export { default as Textarea } from './Textarea';
 export { default as Badge } from './Badge';
 export { default as LoadingSpinner } from './LoadingSpinner';
 export { default as EmptyState } from './EmptyState';
+export { default as Toast } from './Toast';

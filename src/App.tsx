@@ -12,6 +12,7 @@ import WhatsAppConnector from './pages/WhatsAppConnector';
 import AdminLayout from './layouts/AdminLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
+import { Toast } from './components/ui';
 
 const App: FC = () => {
     return (
@@ -35,6 +36,7 @@ const App: FC = () => {
                     </Routes>
                 </BrowserRouter>
             </ErrorBoundary>
+            <Toast />
             <ReactQueryDevtools initialIsOpen={false} />
         </QueryClientProvider>
     );
