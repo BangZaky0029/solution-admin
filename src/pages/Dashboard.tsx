@@ -84,9 +84,9 @@ const Dashboard = () => {
     }
 
     return (
-        <div className="space-y-8 animate-fade-in">
+        <div className="space-y-6 md:space-y-8 animate-fade-in">
             {/* Welcome Banner */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800 rounded-3xl p-10 shadow-2xl">
+            <div className="relative overflow-hidden bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800 rounded-3xl p-6 md:p-10 shadow-2xl">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full opacity-5 transform translate-x-1/2 -translate-y-1/2" />
                 <div className="absolute bottom-0 left-0 w-48 h-48 bg-white rounded-full opacity-5 transform -translate-x-1/2 translate-y-1/2" />
 
@@ -106,13 +106,13 @@ const Dashboard = () => {
                 ))}
 
                 <div className="relative z-10">
-                    <div className="flex items-center gap-3 mb-3">
-                        <span className="text-6xl animate-wave">👋</span>
+                    <div className="flex flex-col md:flex-row md:items-center gap-3 mb-3">
+                        <span className="text-4xl md:text-6xl animate-wave origin-bottom-right">👋</span>
                         <div>
-                            <h1 className="text-4xl font-black text-white mb-2">
+                            <h1 className="text-2xl md:text-4xl font-black text-white mb-2">
                                 {greeting}, Admin!
                             </h1>
-                            <p className="text-purple-200 text-lg font-medium">
+                            <p className="text-purple-200 text-sm md:text-lg font-medium">
                                 Welcome back to Gateway APTO Control Center
                             </p>
                         </div>
@@ -121,7 +121,7 @@ const Dashboard = () => {
                     <div className="mt-6 flex flex-wrap gap-4">
                         <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 text-white flex items-center gap-2">
                             <span className="text-xl">📅</span>
-                            <span className="font-medium">
+                            <span className="font-medium text-sm md:text-base">
                                 {new Date().toLocaleDateString('en-US', {
                                     weekday: 'long',
                                     year: 'numeric',
@@ -141,7 +141,7 @@ const Dashboard = () => {
             </div>
 
             {/* Statistics Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 <StatCard
                     icon="💳"
                     title="Total Payments"
@@ -173,15 +173,15 @@ const Dashboard = () => {
             </div>
 
             {/* Quick Actions */}
-            <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-3xl p-8 shadow-xl">
+            <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-3xl p-6 md:p-8 shadow-xl">
                 <div className="flex items-center gap-3 mb-6">
                     <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-xl p-3">
-                        <span className="text-3xl">⚡</span>
+                        <span className="text-2xl md:text-3xl">⚡</span>
                     </div>
-                    <h2 className="text-2xl font-bold text-gray-800">Quick Actions</h2>
+                    <h2 className="text-xl md:text-2xl font-bold text-gray-800">Quick Actions</h2>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
                     <QuickActionCard
                         href="/payments"
                         icon="👁️"
@@ -206,7 +206,7 @@ const Dashboard = () => {
             {/* Activity & Insights */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Recent Activity */}
-                <div className="bg-white rounded-3xl p-8 shadow-xl border border-gray-100">
+                <div className="bg-white rounded-3xl p-6 md:p-8 shadow-xl border border-gray-100">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="bg-gradient-to-r from-pink-500 to-rose-500 rounded-xl p-3">
                             <span className="text-2xl">📊</span>

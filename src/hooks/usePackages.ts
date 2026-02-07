@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../lib/queryClient';
 import {
     getPackages,
+    getPackage,
     createPackage,
     updatePackage,
     deletePackage,
@@ -13,6 +14,14 @@ export const usePackages = () => {
     return useQuery<Package[]>({
         queryKey: queryKeys.packages,
         queryFn: getPackages,
+    });
+};
+
+export const usePackage = (id: number | null) => {
+    return useQuery<Package>({
+        queryKey: ['packages', id],
+        queryFn: () => getPackage(id!),
+        enabled: !!id,
     });
 };
 

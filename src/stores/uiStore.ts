@@ -7,6 +7,10 @@ interface UIState {
     isSidebarCollapsed: boolean;
     toggleSidebar: () => void;
 
+    isMobileSidebarOpen: boolean;
+    toggleMobileSidebar: () => void;
+    closeMobileSidebar: () => void;
+
     // Modal
     activeModal: ModalType;
     modalData: unknown;
@@ -34,6 +38,13 @@ export const useUIStore = create<UIState>((set) => ({
     toggleSidebar: () => set((state) => ({
         isSidebarCollapsed: !state.isSidebarCollapsed
     })),
+
+    // Mobile Sidebar state
+    isMobileSidebarOpen: false,
+    toggleMobileSidebar: () => set((state) => ({
+        isMobileSidebarOpen: !state.isMobileSidebarOpen
+    })),
+    closeMobileSidebar: () => set({ isMobileSidebarOpen: false }),
 
     // Modal state
     activeModal: null,

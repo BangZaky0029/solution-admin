@@ -14,6 +14,11 @@ export const getPackages = async (): Promise<Package[]> => {
     return response.data;
 };
 
+export const getPackage = async (id: number): Promise<Package> => {
+    const response = await api.get<Package>(`/packages/${id}`);
+    return response.data;
+};
+
 export const createPackage = async (data: CreatePackagePayload): Promise<Package> => {
     const response = await api.post<Package>('/packages', data);
     return response.data;

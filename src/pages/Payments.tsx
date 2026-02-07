@@ -9,7 +9,7 @@ const imageBaseURL = (api?.defaults?.baseURL || import.meta.env.VITE_API_BASE_UR
 
 const Payments = () => {
     const [search, setSearch] = useState('');
-    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [selectedProof, setSelectedProof] = useState<string | null>(null);
 
     // React Query hooks
     const { data: payments = [], isLoading, isError, refetch } = usePayments();
@@ -129,7 +129,7 @@ const Payments = () => {
                             placeholder="Search by email or phone number..."
                             className="w-full px-6 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-300 focus:border-purple-500 transition-all duration-300 outline-none text-gray-800 font-medium"
                         />
-                        <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 opacity-0 group-focus-within:opacity-10 transition-opacity -z-10 blur-xl" />
+                        <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 opacity-0 group-focus-within:opacity-10 transition-opacity -z-10 rounded-xl blur-xl" />
 
                         {search && (
                             <button
@@ -211,10 +211,12 @@ const Payments = () => {
                                         <td className="px-6 py-5">
                                             {payment.proof_image ? (
                                                 <button
-                                                    onClick={() => setSelectedImage(`${imageBaseURL}/uploads/${payment.proof_image}`)}
+                                                    onClick={() => setSelectedProof(`${imageBaseURL}/uploads/${payment.proof_image}`)}
                                                     className="group flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-4 py-2 rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg"
                                                 >
-                                                    <span className="text-xl">🖼️</span>
+                                                    <span className="text-xl">
+                                                        {payment.proof_image.toLowerCase().endsWith('.pdf') ? '📄' : '🖼️'}
+                                                    </span>
                                                     <span>View</span>
                                                 </button>
                                             ) : (
@@ -254,20 +256,30 @@ const Payments = () => {
                 )}
             </div>
 
-            {/* Image Modal */}
+            {/* Proof Modal */}
             <Modal
-                isOpen={!!selectedImage}
-                onClose={() => setSelectedImage(null)}
+                isOpen={!!selectedProof}
+                onClose={() => setSelectedProof(null)}
                 title="Payment Proof"
-                icon="🖼️"
+                icon={selectedProof?.toLowerCase().endsWith('.pdf') ? '📄' : '🖼️'}
                 size="lg"
             >
-                {selectedImage && (
-                    <img
-                        src={selectedImage}
-                        alt="Payment Proof"
-                        className="w-full max-h-[70vh] object-contain rounded-xl"
-                    />
+                {selectedProof && (
+                    <div className="w-full h-[70vh] flex items-center justify-center bg-gray-50 rounded-xl overflow-hidden">
+                        {selectedProof.toLowerCase().endsWith('.pdf') ? (
+                            <iframe
+                                src={selectedProof}
+                                title="Payment Proof PDF"
+                                className="w-full h-full"
+                            />
+                        ) : (
+                            <img
+                                src={selectedProof}
+                                alt="Payment Proof"
+                                className="w-full h-full object-contain"
+                            />
+                        )}
+                    </div>
                 )}
             </Modal>
         </div>

@@ -1,16 +1,13 @@
 import { useState, FC, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { usePackages, useCreatePackage, useUpdatePackage, useDeletePackage } from '../hooks/usePackages';
+import { useNavigate } from 'react-router-dom';
+import { usePackages, useDeletePackage } from '../hooks/usePackages';
 import { useFeatures } from '../hooks/useFeatures';
 import { useUIStore } from '../stores/uiStore';
-import { LoadingSpinner, EmptyState, Modal, Button, Input, Textarea } from '../components/ui';
-import { packageSchema, PackageFormData } from '../lib/validations';
+import { LoadingSpinner, EmptyState, Button } from '../components/ui';
 import type { Package } from '../types';
 
 const Packages = () => {
-    const [showModal, setShowModal] = useState(false);
-    const [editingPackage, setEditingPackage] = useState<Package | null>(null);
+    const navigate = useNavigate();
 
     // Filtering State
     const [selectedCategory, setSelectedCategory] = useState('All');
@@ -20,15 +17,8 @@ const Packages = () => {
     const { data: packages = [], isLoading: packagesLoading } = usePackages();
     const { data: features = [], isLoading: featuresLoading } = useFeatures();
 
-    const createMutation = useCreatePackage();
-    const updateMutation = useUpdatePackage();
     const deleteMutation = useDeletePackage();
     const { addNotification } = useUIStore();
-
-    // Group features for UI
-    const sortedFeatures = useMemo(() => {
-        return [...features].sort((a, b) => a.id - b.id);
-    }, [features]);
 
     // Derived Filters
     const filteredPackages = useMemo(() => {
@@ -58,109 +48,6 @@ const Packages = () => {
     const categories = ['All', 'Dasar', 'Premium', 'Pro', 'Auto Pilot', 'Trial'];
     const durations = ['All', '1 Bulan', '3 Bulan', '6 Bulan', '1 Tahun'];
 
-    // React Hook Form with Zod
-    const {
-        register,
-        handleSubmit,
-        reset,
-        setValue,
-        watch,
-        formState: { errors, isSubmitting },
-    } = useForm<PackageFormData>({
-        resolver: zodResolver(packageSchema),
-        defaultValues: {
-            name: '',
-            price: 0,
-            duration_days: 30,
-            features: '',
-            feature_ids: [],
-            description: '',
-        },
-    });
-
-    // Watch selected feature IDs for UI feedback
-    const selectedFeatureIds = watch('feature_ids') || [];
-
-    const handleFeatureToggle = (featureId: number) => {
-        const current = selectedFeatureIds;
-        if (current.includes(featureId)) {
-            setValue('feature_ids', current.filter(id => id !== featureId));
-        } else {
-            setValue('feature_ids', [...current, featureId]);
-        }
-    };
-
-    const openModal = (pkg: Package | null = null) => {
-        if (pkg) {
-            setEditingPackage(pkg);
-            // Check if description is JSON (auto-generated) or custom text
-            let customDescription = '';
-            if (pkg.description) {
-                try {
-                    JSON.parse(pkg.description);
-                    // It's JSON, so it's auto-generated. Leave customDescription empty.
-                } catch {
-                    // It's NOT JSON, so it's a custom description (e.g. Trial).
-                    customDescription = pkg.description;
-                }
-            }
-
-            reset({
-                name: pkg.name,
-                price: pkg.price,
-                duration_days: pkg.duration_days,
-                features: '', // Legacy ignored
-                feature_ids: pkg.feature_ids || [],
-                description: customDescription,
-            });
-        } else {
-            setEditingPackage(null);
-            reset({ name: '', price: 0, duration_days: 30, features: '', feature_ids: [], description: '' });
-        }
-        setShowModal(true);
-    };
-
-    const closeModal = () => {
-        setShowModal(false);
-        setEditingPackage(null);
-        reset();
-    };
-
-    const onSubmit = async (data: PackageFormData) => {
-        const payload = {
-            name: data.name,
-            price: Number(data.price),
-            duration_days: Number(data.duration_days),
-            feature_ids: data.feature_ids,
-            features: '', // Legacy param
-            description: data.description, // Manual override
-        };
-
-        try {
-            if (editingPackage) {
-                await updateMutation.mutateAsync({ id: editingPackage.id, ...payload });
-                addNotification({
-                    type: 'success',
-                    title: 'Package Updated',
-                    message: `${data.name} has been updated successfully.`,
-                });
-            } else {
-                await createMutation.mutateAsync(payload);
-                addNotification({
-                    type: 'success',
-                    title: 'Package Created',
-                    message: `${data.name} has been created successfully.`,
-                });
-            }
-            closeModal();
-        } catch {
-            addNotification({
-                type: 'error',
-                title: 'Operation Failed',
-                message: 'Failed to save package. Please try again.',
-            });
-        }
-    };
 
     const handleDelete = async (pkg: Package) => {
         if (!confirm(`Are you sure you want to delete "${pkg.name}"?`)) return;
@@ -273,7 +160,7 @@ const Packages = () => {
                     <div className="flex gap-3">
                         <Button
                             variant="primary"
-                            onClick={() => openModal(pkg)}
+                            onClick={() => navigate(`/packages/edit/${pkg.id}`)}
                             className="flex-1"
                             icon="✏️"
                         >
@@ -302,9 +189,8 @@ const Packages = () => {
 
     return (
         <div className="space-y-6 animate-fade-in">
-            {/* Header and Filters (Same as before) */}
+            {/* Header */}
             <div className="relative overflow-hidden bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 rounded-3xl p-8 shadow-2xl">
-                {/* ... header content ... */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full opacity-10 transform translate-x-1/2 -translate-y-1/2" />
                 <div className="absolute bottom-0 left-0 w-48 h-48 bg-white rounded-full opacity-10 transform -translate-x-1/2 translate-y-1/2" />
                 <div className="relative z-10 flex items-center justify-between">
@@ -319,7 +205,7 @@ const Packages = () => {
                             </p>
                         </div>
                     </div>
-                    <Button variant="ghost" onClick={() => openModal()} className="bg-white hover:bg-gray-50 text-emerald-600 shadow-xl" size="lg" icon="➕">
+                    <Button variant="ghost" onClick={() => navigate('/packages/create')} className="bg-white hover:bg-gray-50 text-emerald-600 shadow-xl" size="lg" icon="➕">
                         <span className="hidden sm:inline">Create Package</span>
                     </Button>
                 </div>
@@ -354,119 +240,6 @@ const Packages = () => {
             ) : (
                 <EmptyState icon="📦" title="No packages found" description="Try adjusting your filters" action={<Button variant="ghost" onClick={() => { setSelectedCategory('All'); setSelectedDuration('All'); }} icon="🔄">Reset Filters</Button>} />
             )}
-
-            {/* Modal with Feature Selection */}
-            <Modal
-                isOpen={showModal}
-                onClose={closeModal}
-                title={editingPackage ? 'Edit Package' : 'Create New Package'}
-                icon={editingPackage ? '✏️' : '✨'}
-                size="lg" // Make it wider for feature list
-            >
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                    <Input
-                        label="Package Name"
-                        icon="🏷️"
-                        placeholder="Enter package name"
-                        error={errors.name?.message}
-                        {...register('name')}
-                    />
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <Input
-                            label="Price (IDR)"
-                            icon="💰"
-                            type="number"
-                            placeholder="50000"
-                            error={errors.price?.message}
-                            {...register('price', { valueAsNumber: true })}
-                        />
-
-                        <Input
-                            label="Duration (days)"
-                            icon="⏳"
-                            type="number"
-                            placeholder="30"
-                            error={errors.duration_days?.message}
-                            {...register('duration_days', { valueAsNumber: true })}
-                        />
-                    </div>
-
-                    {/* Feature Selection Grid */}
-                    <div className="space-y-2">
-                        <label className="block text-sm font-bold text-gray-700 flex items-center gap-2">
-                            <span>✨</span>
-                            Select Features
-                        </label>
-
-                        {errors.feature_ids && (
-                            <p className="text-red-500 text-xs font-semibold">{errors.feature_ids.message}</p>
-                        )}
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto p-4 bg-gray-50 rounded-xl border-2 border-gray-100">
-                            {sortedFeatures.map(feature => {
-                                const isSelected = selectedFeatureIds.includes(feature.id);
-                                return (
-                                    <div
-                                        key={feature.id}
-                                        onClick={() => handleFeatureToggle(feature.id)}
-                                        className={`flex items-center p-3 rounded-lg cursor-pointer transition-all duration-200 border-2 ${isSelected
-                                                ? 'bg-purple-50 border-purple-500 shadow-md'
-                                                : 'bg-white border-transparent hover:border-gray-200'
-                                            }`}
-                                    >
-                                        <div className={`w-5 h-5 rounded-md flex items-center justify-center border-2 mr-3 transition-colors ${isSelected ? 'bg-purple-500 border-purple-500' : 'border-gray-300'
-                                            }`}>
-                                            {isSelected && <span className="text-white text-xs font-bold">✓</span>}
-                                        </div>
-                                        <div className="flex-1">
-                                            <p className={`text-sm font-semibold ${isSelected ? 'text-purple-700' : 'text-gray-700'}`}>
-                                                {feature.name}
-                                            </p>
-                                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${feature.status === 'premium' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
-                                                {feature.status}
-                                            </span>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    <div className="border-t pt-4">
-                        <Textarea
-                            label="Description (Override)"
-                            icon="📝"
-                            placeholder="Optional: Manually override the feature list description (e.g. for Trial packages). Leave empty to auto-generate from features."
-                            rows={3}
-                            error={errors.description?.message}
-                            {...register('description')}
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                            * Leave empty to automatically generate description from selected features.
-                        </p>
-                    </div>
-
-                    <div className="flex gap-3 pt-4">
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={closeModal}
-                            className="flex-1"
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            type="submit"
-                            variant="primary"
-                            loading={isSubmitting || createMutation.isPending || updateMutation.isPending}
-                            className="flex-1"
-                        >
-                            {editingPackage ? 'Update' : 'Create'}
-                        </Button>
-                    </div>
-                </form>
-            </Modal>
         </div>
     );
 };

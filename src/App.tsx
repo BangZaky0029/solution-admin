@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Payments from './pages/Payments';
 import Packages from './pages/Packages';
+import PackageEditor from './pages/PackageEditor';
 import Users from './pages/Users';
 import WhatsAppConnector from './pages/WhatsAppConnector';
 import AdminLayout from './layouts/AdminLayout';
@@ -29,6 +30,8 @@ const App: FC = () => {
                                 <Route path="/" element={<Dashboard />} />
                                 <Route path="/payments" element={<Payments />} />
                                 <Route path="/packages" element={<Packages />} />
+                                <Route path="/packages/create" element={<PackageEditor />} />
+                                <Route path="/packages/edit/:id" element={<PackageEditor />} />
                                 <Route path="/users" element={<Users />} />
                                 <Route path="/whatsapp" element={<WhatsAppConnector />} />
                             </Route>

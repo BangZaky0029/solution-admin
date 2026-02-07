@@ -2,7 +2,10 @@ import { FC, useState, useEffect } from 'react';
 import { logout } from '../utils/auth';
 import type { Notification } from '../types';
 
+import { useUIStore } from '../stores/uiStore';
+
 const Header: FC = () => {
+    const { toggleMobileSidebar } = useUIStore();
     const [time, setTime] = useState<Date>(new Date());
     const [showNotifications, setShowNotifications] = useState<boolean>(false);
 
@@ -31,15 +34,23 @@ const Header: FC = () => {
             <div className="flex items-center justify-between">
                 {/* Left Section - Title & Breadcrumb */}
                 <div className="flex items-center gap-4">
-                    <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl p-3 shadow-lg hover:scale-110 transition-transform duration-300">
+                    {/* Mobile Menu Toggle */}
+                    <button
+                        onClick={toggleMobileSidebar}
+                        className="md:hidden p-2 rounded-xl bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-600 transition-colors"
+                    >
+                        <span className="text-2xl">☰</span>
+                    </button>
+
+                    <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl p-3 shadow-lg hover:scale-110 transition-transform duration-300 hidden sm:block">
                         <span className="text-2xl">🎯</span>
                     </div>
                     <div>
                         <h1 className="text-xl font-black text-gray-800 flex items-center gap-2">
-                            <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                            <span className="hidden sm:inline bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
                                 Gateway APTO
                             </span>
-                            <span className="text-gray-400">•</span>
+                            <span className="hidden sm:inline text-gray-400">•</span>
                             <span className="text-gray-600 font-bold">Admin Dashboard</span>
                         </h1>
                         <p className="text-xs text-gray-500 mt-1 flex items-center gap-2">
