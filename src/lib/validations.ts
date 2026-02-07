@@ -11,12 +11,8 @@ export const packageSchema = z.object({
     duration_days: z.number()
         .min(1, 'Duration must be at least 1 day')
         .max(365, 'Duration cannot exceed 365 days'),
-    features: z.string()
-        .min(3, 'Features are required')
-        .refine(
-            (val) => val.split(',').filter(f => f.trim()).length >= 1,
-            'At least one feature is required'
-        ),
+    features: z.string().optional(),
+    feature_ids: z.array(z.number()).min(1, 'Select at least one feature'),
 });
 
 export type PackageFormData = z.infer<typeof packageSchema>;

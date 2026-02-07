@@ -1,9 +1,10 @@
-import { useState, FC } from 'react';
+import { useState, FC, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { usePackages, useCreatePackage, useUpdatePackage, useDeletePackage } from '../hooks/usePackages';
+import { useFeatures } from '../hooks/useFeatures';
 import { useUIStore } from '../stores/uiStore';
-import { LoadingSpinner, EmptyState, Modal, Button, Input, Textarea } from '../components/ui';
+import { LoadingSpinner, EmptyState, Modal, Button, Input } from '../components/ui';
 import { packageSchema, PackageFormData } from '../lib/validations';
 import type { Package } from '../types';
 
@@ -11,35 +12,59 @@ const Packages = () => {
     const [showModal, setShowModal] = useState(false);
     const [editingPackage, setEditingPackage] = useState<Package | null>(null);
 
+    // Filtering State
+    const [selectedCategory, setSelectedCategory] = useState('All');
+    const [selectedDuration, setSelectedDuration] = useState('All');
+
     // React Query hooks
-    const { data: packagesData = [], isLoading } = usePackages();
+    const { data: packages = [], isLoading: packagesLoading } = usePackages();
+    const { data: features = [], isLoading: featuresLoading } = useFeatures();
+
     const createMutation = useCreatePackage();
     const updateMutation = useUpdatePackage();
     const deleteMutation = useDeletePackage();
     const { addNotification } = useUIStore();
 
-    // Parse packages features
-    const packages = packagesData.map((pkg: Package) => {
-        let features: string[] = [];
-        if (typeof pkg.features === 'string') {
-            try {
-                features = pkg.features.startsWith('[')
-                    ? JSON.parse(pkg.features)
-                    : pkg.features.split(',').map(f => f.trim()).filter(Boolean);
-            } catch {
-                features = [];
+    // Group features for UI
+    const sortedFeatures = useMemo(() => {
+        return [...features].sort((a, b) => a.id - b.id);
+    }, [features]);
+
+    // Derived Filters
+    const filteredPackages = useMemo(() => {
+        return packages.filter(pkg => {
+            // Filter by Category
+            const matchCategory = selectedCategory === 'All'
+                ? true
+                : pkg.name.toLowerCase().includes(selectedCategory.toLowerCase());
+
+            // Filter by Duration
+            let matchDuration = true;
+            if (selectedDuration !== 'All') {
+                const durationMap: Record<string, number> = {
+                    'Trial': 3,
+                    '1 Bulan': 30,
+                    '3 Bulan': 90,
+                    '6 Bulan': 180,
+                    '1 Tahun': 365
+                };
+                matchDuration = pkg.duration_days === durationMap[selectedDuration];
             }
-        } else if (Array.isArray(pkg.features)) {
-            features = pkg.features;
-        }
-        return { ...pkg, features };
-    });
+
+            return matchCategory && matchDuration;
+        });
+    }, [packages, selectedCategory, selectedDuration]);
+
+    const categories = ['All', 'Dasar', 'Premium', 'Pro', 'Auto Pilot', 'Trial'];
+    const durations = ['All', '1 Bulan', '3 Bulan', '6 Bulan', '1 Tahun'];
 
     // React Hook Form with Zod
     const {
         register,
         handleSubmit,
         reset,
+        setValue,
+        watch,
         formState: { errors, isSubmitting },
     } = useForm<PackageFormData>({
         resolver: zodResolver(packageSchema),
@@ -48,8 +73,21 @@ const Packages = () => {
             price: 0,
             duration_days: 30,
             features: '',
+            feature_ids: [],
         },
     });
+
+    // Watch selected feature IDs for UI feedback
+    const selectedFeatureIds = watch('feature_ids') || [];
+
+    const handleFeatureToggle = (featureId: number) => {
+        const current = selectedFeatureIds;
+        if (current.includes(featureId)) {
+            setValue('feature_ids', current.filter(id => id !== featureId));
+        } else {
+            setValue('feature_ids', [...current, featureId]);
+        }
+    };
 
     const openModal = (pkg: Package | null = null) => {
         if (pkg) {
@@ -58,11 +96,12 @@ const Packages = () => {
                 name: pkg.name,
                 price: pkg.price,
                 duration_days: pkg.duration_days,
-                features: Array.isArray(pkg.features) ? pkg.features.join(', ') : String(pkg.features),
+                features: '', // Legacy ignored
+                feature_ids: pkg.feature_ids || [],
             });
         } else {
             setEditingPackage(null);
-            reset({ name: '', price: 0, duration_days: 30, features: '' });
+            reset({ name: '', price: 0, duration_days: 30, features: '', feature_ids: [] });
         }
         setShowModal(true);
     };
@@ -74,16 +113,12 @@ const Packages = () => {
     };
 
     const onSubmit = async (data: PackageFormData) => {
-        const featuresArray = data.features
-            .split(',')
-            .map(f => f.trim())
-            .filter(Boolean);
-
         const payload = {
             name: data.name,
-            price: data.price,
-            duration_days: data.duration_days,
-            features: featuresArray,
+            price: Number(data.price),
+            duration_days: Number(data.duration_days),
+            feature_ids: data.feature_ids,
+            features: '', // Legacy param
         };
 
         try {
@@ -131,6 +166,14 @@ const Packages = () => {
         }
     };
 
+    // Helper to get feature names for a package
+    const getPackageFeatureNames = (pkg: Package) => {
+        if (!pkg.feature_ids?.length) return [];
+        return pkg.feature_ids
+            .map(id => features.find(f => f.id === id)?.name)
+            .filter(Boolean) as string[];
+    };
+
     const gradients = [
         'from-blue-500 to-blue-700',
         'from-purple-500 to-purple-700',
@@ -143,7 +186,22 @@ const Packages = () => {
     }
 
     const PackageCard: FC<PackageCardProps> = ({ pkg, index }) => {
-        const features = Array.isArray(pkg.features) ? pkg.features : [];
+        // Fallback to old features string if feature_ids not available (backward comaptibility)
+        let displayFeatures: string[] = getPackageFeatureNames(pkg);
+
+        // If relational features are empty, try parsing the legacy JSON string
+        if (displayFeatures.length === 0 && pkg.features) {
+            if (Array.isArray(pkg.features)) {
+                displayFeatures = pkg.features;
+            } else if (typeof pkg.features === 'string') {
+                try {
+                    displayFeatures = JSON.parse(pkg.features);
+                } catch {
+                    // ignore
+                }
+            }
+        }
+
         return (
             <div
                 className="group relative overflow-hidden bg-white rounded-3xl shadow-xl border-2 border-gray-100 hover:border-transparent hover:scale-105 transition-all duration-500"
@@ -180,16 +238,21 @@ const Packages = () => {
 
                 <div className="p-8">
                     <div className="space-y-4 mb-6">
-                        {features.map((feature, idx) => (
+                        {displayFeatures.slice(0, 5).map((feature, idx) => (
                             <div key={idx} className="flex items-center gap-3 group/item">
                                 <div className="w-6 h-6 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center flex-shrink-0 group-hover/item:scale-125 transition-transform">
                                     <span className="text-white text-xs font-bold">✓</span>
                                 </div>
-                                <span className="text-gray-700 font-medium group-hover/item:text-gray-900 transition-colors">
+                                <span className="text-gray-700 font-medium group-hover/item:text-gray-900 transition-colors line-clamp-1">
                                     {feature}
                                 </span>
                             </div>
                         ))}
+                        {displayFeatures.length > 5 && (
+                            <div className="text-xs text-center text-gray-500 font-medium italic">
+                                +{displayFeatures.length - 5} more features...
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex gap-3">
@@ -218,8 +281,8 @@ const Packages = () => {
         );
     };
 
-    if (isLoading) {
-        return <LoadingSpinner size="lg" text="Loading packages..." icon="📦" />;
+    if (packagesLoading || featuresLoading) {
+        return <LoadingSpinner size="lg" text="Loading data..." icon="📦" />;
     }
 
     return (
@@ -254,32 +317,66 @@ const Packages = () => {
                 </div>
             </div>
 
+            {/* Filters */}
+            <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
+                {/* Category Tabs */}
+                <div className="flex flex-wrap gap-2">
+                    {categories.map(cat => (
+                        <button
+                            key={cat}
+                            onClick={() => setSelectedCategory(cat)}
+                            className={`px-4 py-2 rounded-xl font-bold text-sm transition-all duration-300 ${selectedCategory === cat
+                                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg scale-105'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                        >
+                            {cat}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Duration Dropdown */}
+                <div className="flex items-center gap-3">
+                    <span className="text-gray-500 font-bold text-sm">Duration:</span>
+                    <select
+                        value={selectedDuration}
+                        onChange={(e) => setSelectedDuration(e.target.value)}
+                        className="bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-2 font-semibold text-gray-700 focus:outline-none focus:border-purple-500 transition-colors"
+                    >
+                        {durations.map(dur => (
+                            <option key={dur} value={dur}>{dur}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+
             {/* Packages Grid */}
-            {packages.length > 0 ? (
+            {filteredPackages.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {packages.map((pkg, index) => (
+                    {filteredPackages.map((pkg, index) => (
                         <PackageCard key={pkg.id} pkg={pkg} index={index} />
                     ))}
                 </div>
             ) : (
                 <EmptyState
                     icon="📦"
-                    title="No packages yet"
-                    description="Create your first package to get started"
+                    title="No packages found"
+                    description="Try adjusting your filters"
                     action={
-                        <Button variant="primary" onClick={() => openModal()} icon="➕">
-                            Create First Package
+                        <Button variant="ghost" onClick={() => { setSelectedCategory('All'); setSelectedDuration('All'); }} icon="🔄">
+                            Reset Filters
                         </Button>
                     }
                 />
             )}
 
-            {/* Modal with Zod Validation */}
+            {/* Modal with Feature Selection */}
             <Modal
                 isOpen={showModal}
                 onClose={closeModal}
                 title={editingPackage ? 'Edit Package' : 'Create New Package'}
                 icon={editingPackage ? '✏️' : '✨'}
+                size="lg" // Make it wider for feature list
             >
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                     <Input
@@ -310,14 +407,46 @@ const Packages = () => {
                         />
                     </div>
 
-                    <Textarea
-                        label="Features (comma separated)"
-                        icon="✨"
-                        placeholder="Feature 1, Feature 2, Feature 3"
-                        rows={4}
-                        error={errors.features?.message}
-                        {...register('features')}
-                    />
+                    {/* Feature Selection Grid */}
+                    <div className="space-y-2">
+                        <label className="block text-sm font-bold text-gray-700 flex items-center gap-2">
+                            <span>✨</span>
+                            Select Features
+                        </label>
+
+                        {errors.feature_ids && (
+                            <p className="text-red-500 text-xs font-semibold">{errors.feature_ids.message}</p>
+                        )}
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto p-4 bg-gray-50 rounded-xl border-2 border-gray-100">
+                            {sortedFeatures.map(feature => {
+                                const isSelected = selectedFeatureIds.includes(feature.id);
+                                return (
+                                    <div
+                                        key={feature.id}
+                                        onClick={() => handleFeatureToggle(feature.id)}
+                                        className={`flex items-center p-3 rounded-lg cursor-pointer transition-all duration-200 border-2 ${isSelected
+                                                ? 'bg-purple-50 border-purple-500 shadow-md'
+                                                : 'bg-white border-transparent hover:border-gray-200'
+                                            }`}
+                                    >
+                                        <div className={`w-5 h-5 rounded-md flex items-center justify-center border-2 mr-3 transition-colors ${isSelected ? 'bg-purple-500 border-purple-500' : 'border-gray-300'
+                                            }`}>
+                                            {isSelected && <span className="text-white text-xs font-bold">✓</span>}
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className={`text-sm font-semibold ${isSelected ? 'text-purple-700' : 'text-gray-700'}`}>
+                                                {feature.name}
+                                            </p>
+                                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${feature.status === 'premium' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
+                                                {feature.status}
+                                            </span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
 
                     <div className="flex gap-3 pt-4">
                         <Button

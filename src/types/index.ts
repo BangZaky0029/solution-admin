@@ -22,6 +22,7 @@ export interface Package {
     price: number;
     duration_days: number;
     features: string[] | string;
+    feature_ids?: number[];
     created_at?: string;
 }
 
@@ -29,7 +30,8 @@ export interface PackageFormData {
     name: string;
     price: string | number;
     duration_days: number;
-    features: string;
+    features: string; // Legacy text input (for backward compatibility if needed, or we can remove)
+    feature_ids: number[]; // New relational input
 }
 
 // ============================================

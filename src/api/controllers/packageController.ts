@@ -5,7 +5,8 @@ export interface CreatePackagePayload {
     name: string;
     price: number;
     duration_days: number;
-    features: string[];
+    features?: string | string[]; // Legacy
+    feature_ids?: number[]; // New
 }
 
 export const getPackages = async (): Promise<Package[]> => {
