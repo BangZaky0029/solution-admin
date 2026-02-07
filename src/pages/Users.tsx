@@ -179,7 +179,7 @@ const Users: FC = () => {
                 </div>
             </div>
 
-            {/* Users Table */}
+            {/* Users List (Responsive: Cards on Mobile, Table on Desktop) */}
             <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
                 {filteredUsers.length === 0 ? (
                     <div className="text-center py-20">
@@ -192,98 +192,166 @@ const Users: FC = () => {
                         </p>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="bg-gradient-to-r from-gray-50 to-gray-100">
-                                    <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
-                                        User
-                                    </th>
-                                    <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
-                                        Contact
-                                    </th>
-                                    <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
-                                        Status
-                                    </th>
-                                    <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
-                                        Package
-                                    </th>
-                                    <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
-                                        Expires
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {filteredUsers.map((user, index) => {
-                                    const isExpired = user.expired_at && new Date(user.expired_at) < new Date();
-                                    return (
-                                        <tr
-                                            key={user.id}
-                                            className="hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-all duration-300"
-                                            style={{ animationDelay: `${index * 0.05}s` }}
-                                        >
-                                            <td className="px-6 py-5">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                                                        {user.name?.charAt(0).toUpperCase() || 'U'}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-bold text-gray-900">{user.name}</p>
-                                                        <p className="text-sm text-gray-500">ID: {user.id}</p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-5">
-                                                <p className="text-gray-800 font-medium flex items-center gap-2">
-                                                    <span>📧</span> {user.email}
-                                                </p>
-                                                <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
-                                                    <span>📱</span> {user.phone}
-                                                </p>
-                                            </td>
-                                            <td className="px-6 py-5">
-                                                <div className="flex flex-col gap-2">
-                                                    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold w-fit ${user.is_verified
-                                                            ? 'bg-green-100 text-green-700'
-                                                            : 'bg-gray-100 text-gray-600'
-                                                        }`}>
-                                                        {user.is_verified ? '✅ Verified' : '⏳ Pending'}
-                                                    </span>
-                                                    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold w-fit ${user.is_active && !isExpired
-                                                            ? 'bg-blue-100 text-blue-700'
-                                                            : 'bg-red-100 text-red-700'
-                                                        }`}>
-                                                        {user.is_active && !isExpired ? '⚡ Active' : '❌ Inactive'}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-5">
-                                                {user.package_name ? (
-                                                    <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-bold">
-                                                        📦 {user.package_name}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-gray-400 italic">No package</span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-5">
+                    <>
+                        {/* Mobile Card View */}
+                        <div className="md:hidden space-y-4 p-4">
+                            {filteredUsers.map((user, index) => {
+                                const isExpired = user.expired_at && new Date(user.expired_at) < new Date();
+                                return (
+                                    <div
+                                        key={user.id}
+                                        className="bg-gray-50 rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow animate-fade-in"
+                                        style={{ animationDelay: `${index * 0.05}s` }}
+                                    >
+                                        <div className="flex items-center gap-4 mb-4">
+                                            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                                                {user.name?.charAt(0).toUpperCase() || 'U'}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-gray-900 text-lg">{user.name}</p>
+                                                <p className="text-xs text-gray-500">ID: {user.id}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-wrap gap-2 mb-4">
+                                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${user.is_verified
+                                                ? 'bg-green-100 text-green-700'
+                                                : 'bg-gray-100 text-gray-600'
+                                                }`}>
+                                                {user.is_verified ? '✅ Verified' : '⏳ Pending'}
+                                            </span>
+                                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${user.is_active && !isExpired
+                                                ? 'bg-blue-100 text-blue-700'
+                                                : 'bg-red-100 text-red-700'
+                                                }`}>
+                                                {user.is_active && !isExpired ? '⚡ Active' : '❌ Inactive'}
+                                            </span>
+                                            {user.package_name && (
+                                                <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold">
+                                                    📦 {user.package_name}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="space-y-2 pt-3 border-t border-gray-200">
+                                            <p className="text-sm text-gray-700 flex items-center gap-2">
+                                                <span>📧</span> {user.email}
+                                            </p>
+                                            <p className="text-sm text-gray-700 flex items-center gap-2">
+                                                <span>📱</span> {user.phone}
+                                            </p>
+                                            <div className="pt-2">
                                                 {user.expired_at ? (
-                                                    <div className={`flex items-center gap-2 ${isExpired ? 'text-red-600' : 'text-green-600'}`}>
-                                                        <span>{isExpired ? '⏰' : '📅'}</span>
-                                                        <span className="text-sm font-medium">
+                                                    <div className={`flex items-center gap-2 text-sm font-medium ${isExpired ? 'text-red-600' : 'text-green-600'}`}>
+                                                        <span>{isExpired ? '⏰ Expired:' : '📅 Expires:'}</span>
+                                                        <span>
                                                             {new Date(user.expired_at).toLocaleDateString('id-ID')}
                                                         </span>
                                                     </div>
                                                 ) : (
-                                                    <span className="text-gray-400">-</span>
+                                                    <span className="text-gray-400 text-sm italic">- No expiration date -</span>
                                                 )}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Desktop Table View */}
+                        <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="bg-gradient-to-r from-gray-50 to-gray-100">
+                                        <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
+                                            User
+                                        </th>
+                                        <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
+                                            Contact
+                                        </th>
+                                        <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
+                                            Status
+                                        </th>
+                                        <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
+                                            Package
+                                        </th>
+                                        <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
+                                            Expires
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                    {filteredUsers.map((user, index) => {
+                                        const isExpired = user.expired_at && new Date(user.expired_at) < new Date();
+                                        return (
+                                            <tr
+                                                key={user.id}
+                                                className="hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-all duration-300"
+                                                style={{ animationDelay: `${index * 0.05}s` }}
+                                            >
+                                                <td className="px-6 py-5">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                                                            {user.name?.charAt(0).toUpperCase() || 'U'}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-bold text-gray-900">{user.name}</p>
+                                                            <p className="text-sm text-gray-500">ID: {user.id}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <p className="text-gray-800 font-medium flex items-center gap-2">
+                                                        <span>📧</span> {user.email}
+                                                    </p>
+                                                    <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
+                                                        <span>📱</span> {user.phone}
+                                                    </p>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <div className="flex flex-col gap-2">
+                                                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold w-fit ${user.is_verified
+                                                            ? 'bg-green-100 text-green-700'
+                                                            : 'bg-gray-100 text-gray-600'
+                                                            }`}>
+                                                            {user.is_verified ? '✅ Verified' : '⏳ Pending'}
+                                                        </span>
+                                                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold w-fit ${user.is_active && !isExpired
+                                                            ? 'bg-blue-100 text-blue-700'
+                                                            : 'bg-red-100 text-red-700'
+                                                            }`}>
+                                                            {user.is_active && !isExpired ? '⚡ Active' : '❌ Inactive'}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    {user.package_name ? (
+                                                        <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-bold">
+                                                            📦 {user.package_name}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-gray-400 italic">No package</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    {user.expired_at ? (
+                                                        <div className={`flex items-center gap-2 ${isExpired ? 'text-red-600' : 'text-green-600'}`}>
+                                                            <span>{isExpired ? '⏰' : '📅'}</span>
+                                                            <span className="text-sm font-medium">
+                                                                {new Date(user.expired_at).toLocaleDateString('id-ID')}
+                                                            </span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-gray-400">-</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
                 )}
             </div>
         </div>

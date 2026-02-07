@@ -28,18 +28,18 @@ const Sidebar: FC = () => {
             {/* Mobile Overlay */}
             {isMobileSidebarOpen && (
                 <div
-                    className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm transition-opacity"
+                    className="fixed inset-0 bg-black/50 z-[9998] md:hidden backdrop-blur-sm transition-opacity"
                     onClick={closeMobileSidebar}
                 />
             )}
 
             <aside className={`
-                fixed inset-y-0 left-0 z-50 w-72 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white flex flex-col overflow-hidden transition-transform duration-300 ease-in-out shadow-2xl
+                fixed inset-y-0 left-0 z-[9999] w-72 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white flex flex-col overflow-hidden transition-transform duration-300 ease-in-out shadow-2xl
                 md:relative md:translate-x-0
                 ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
             `}>
-                {/* Decorative background elements */}
-                <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-20 pointer-events-none">
+                {/* Decorative background elements (Optimized for performance) */}
+                <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-20 pointer-events-none hidden md:block">
                     <div className="absolute -top-20 -left-20 w-40 h-40 bg-purple-500 rounded-full blur-3xl"></div>
                     <div className="absolute top-40 -right-20 w-40 h-40 bg-blue-500 rounded-full blur-3xl"></div>
                     <div className="absolute -bottom-20 left-20 w-40 h-40 bg-pink-500 rounded-full blur-3xl"></div>
@@ -49,7 +49,7 @@ const Sidebar: FC = () => {
                 <div className="relative p-6 border-b border-white/10 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div className="relative">
-                            <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl blur-md opacity-75 animate-pulse"></div>
+                            <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl blur-md opacity-75 animate-pulse hidden md:block"></div>
                             <div className="relative bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl p-3 shadow-xl">
                                 <span className="text-3xl">🚀</span>
                             </div>
@@ -64,12 +64,13 @@ const Sidebar: FC = () => {
                         </div>
                     </div>
 
-                    {/* Mobile Close Button */}
+                    {/* Mobile Close Button (Larger touch target) */}
                     <button
                         onClick={closeMobileSidebar}
-                        className="md:hidden text-gray-400 hover:text-white p-2"
+                        className="md:hidden text-gray-400 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors"
+                        aria-label="Close sidebar"
                     >
-                        ✕
+                        <span className="text-2xl">✕</span>
                     </button>
                 </div>
 

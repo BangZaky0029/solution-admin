@@ -143,7 +143,7 @@ const Payments = () => {
                 </div>
             </div>
 
-            {/* Payments Table Card */}
+            {/* Payments List (Responsive: Cards on Mobile, Table on Desktop) */}
             <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
                 {filteredPayments.length === 0 ? (
                     <EmptyState
@@ -152,107 +152,187 @@ const Payments = () => {
                         description={search ? 'Try different search terms' : 'All payments have been processed'}
                     />
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="bg-gradient-to-r from-gray-50 to-gray-100">
-                                    <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
-                                        Payment ID
-                                    </th>
-                                    <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
-                                        Customer Info
-                                    </th>
-                                    <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
-                                        Package
-                                    </th>
-                                    <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
-                                        Proof
-                                    </th>
-                                    <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
-                                        Date
-                                    </th>
-                                    <th className="px-6 py-5 text-center text-xs font-black text-gray-700 uppercase tracking-wider">
-                                        Action
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {filteredPayments.map((payment: Payment, index: number) => (
-                                    <tr
-                                        key={payment.id}
-                                        className="hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-all duration-300"
-                                        style={{ animationDelay: `${index * 0.05}s` }}
-                                    >
-                                        <td className="px-6 py-5">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg">
-                                                    #
-                                                </div>
-                                                <span className="font-bold text-gray-900">{payment.payment_id || payment.id}</span>
+                    <>
+                        {/* Mobile Card View */}
+                        <div className="md:hidden space-y-4 p-4">
+                            {filteredPayments.map((payment: Payment, index: number) => (
+                                <div
+                                    key={payment.id}
+                                    className="bg-gray-50 rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow animate-fade-in"
+                                    style={{ animationDelay: `${index * 0.05}s` }}
+                                >
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold shadow-sm">
+                                                #
                                             </div>
-                                        </td>
-                                        <td className="px-6 py-5">
                                             <div>
-                                                <p className="font-semibold text-gray-900 flex items-center gap-2">
-                                                    <span>📧</span>
-                                                    {payment.email}
-                                                </p>
-                                                <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
-                                                    <span>📱</span>
-                                                    {payment.phone}
-                                                </p>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-5">
-                                            <Badge variant="purple" icon="📦">
-                                                {payment.package_name || 'N/A'}
-                                            </Badge>
-                                        </td>
-                                        <td className="px-6 py-5">
-                                            {payment.proof_image ? (
-                                                <button
-                                                    onClick={() => setSelectedProof(`${imageBaseURL}/uploads/${payment.proof_image}`)}
-                                                    className="group flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-4 py-2 rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                                                >
-                                                    <span className="text-xl">
-                                                        {payment.proof_image.toLowerCase().endsWith('.pdf') ? '📄' : '🖼️'}
-                                                    </span>
-                                                    <span>View</span>
-                                                </button>
-                                            ) : (
-                                                <span className="text-gray-400 font-medium italic">No proof</span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-5">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xl">📅</span>
-                                                <span className="text-sm font-medium text-gray-700">
+                                                <p className="font-bold text-gray-900">ID: {payment.payment_id || payment.id}</p>
+                                                <p className="text-xs text-gray-500">
                                                     {new Date(payment.created_at).toLocaleDateString('id-ID', {
                                                         year: 'numeric',
                                                         month: 'short',
                                                         day: 'numeric',
                                                     })}
-                                                </span>
+                                                </p>
                                             </div>
-                                        </td>
-                                        <td className="px-6 py-5 text-center">
+                                        </div>
+                                        <Badge variant="purple" icon="📦">
+                                            {payment.package_name || 'N/A'}
+                                        </Badge>
+                                    </div>
+
+                                    <div className="space-y-3 mb-4">
+                                        <div className="flex items-center gap-2 text-sm text-gray-700">
+                                            <span>📧</span>
+                                            <span className="truncate">{payment.email}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-sm text-gray-700">
+                                            <span>📱</span>
+                                            <span>{payment.phone}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-3 pt-3 border-t border-gray-200">
+                                        {payment.proof_image ? (
                                             <button
-                                                onClick={() => handleActivate(String(payment.payment_id || payment.id))}
-                                                disabled={activateMutation.isPending}
-                                                className="group relative bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-6 py-3 rounded-xl font-bold transition-all duration-300 hover:scale-110 hover:shadow-2xl overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+                                                onClick={() => setSelectedProof(`${imageBaseURL}/uploads/${payment.proof_image}`)}
+                                                className="flex-1 flex items-center justify-center gap-2 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2.5 rounded-xl font-bold text-sm transition-colors"
                                             >
-                                                <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-green-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                <span className="relative flex items-center gap-2">
-                                                    <span className="text-xl">{activateMutation.isPending ? '⏳' : '✅'}</span>
-                                                    {activateMutation.isPending ? 'Processing...' : 'Activate'}
-                                                </span>
+                                                <span>{payment.proof_image.toLowerCase().endsWith('.pdf') ? '📄' : '🖼️'}</span>
+                                                Proof
                                             </button>
-                                        </td>
+                                        ) : (
+                                            <div className="flex-1 py-2.5 text-center text-gray-400 text-sm italic bg-gray-100 rounded-xl">
+                                                No proof
+                                            </div>
+                                        )}
+
+                                        <button
+                                            onClick={() => handleActivate(String(payment.payment_id || payment.id))}
+                                            disabled={activateMutation.isPending}
+                                            className="flex-[2] bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-2.5 rounded-xl font-bold text-sm shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                        >
+                                            {activateMutation.isPending ? (
+                                                <>
+                                                    <span className="animate-spin">⏳</span>
+                                                    <span>Processing...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span>✅</span>
+                                                    <span>Activate</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Desktop Table View */}
+                        <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="bg-gradient-to-r from-gray-50 to-gray-100">
+                                        <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
+                                            Payment ID
+                                        </th>
+                                        <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
+                                            Customer Info
+                                        </th>
+                                        <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
+                                            Package
+                                        </th>
+                                        <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
+                                            Proof
+                                        </th>
+                                        <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
+                                            Date
+                                        </th>
+                                        <th className="px-6 py-5 text-center text-xs font-black text-gray-700 uppercase tracking-wider">
+                                            Action
+                                        </th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                    {filteredPayments.map((payment: Payment, index: number) => (
+                                        <tr
+                                            key={payment.id}
+                                            className="hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-all duration-300"
+                                            style={{ animationDelay: `${index * 0.05}s` }}
+                                        >
+                                            <td className="px-6 py-5">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg">
+                                                        #
+                                                    </div>
+                                                    <span className="font-bold text-gray-900">{payment.payment_id || payment.id}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                <div>
+                                                    <p className="font-semibold text-gray-900 flex items-center gap-2">
+                                                        <span>📧</span>
+                                                        {payment.email}
+                                                    </p>
+                                                    <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
+                                                        <span>📱</span>
+                                                        {payment.phone}
+                                                    </p>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                <Badge variant="purple" icon="📦">
+                                                    {payment.package_name || 'N/A'}
+                                                </Badge>
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                {payment.proof_image ? (
+                                                    <button
+                                                        onClick={() => setSelectedProof(`${imageBaseURL}/uploads/${payment.proof_image}`)}
+                                                        className="group flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-4 py-2 rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                                                    >
+                                                        <span className="text-xl">
+                                                            {payment.proof_image.toLowerCase().endsWith('.pdf') ? '📄' : '🖼️'}
+                                                        </span>
+                                                        <span>View</span>
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-gray-400 font-medium italic">No proof</span>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xl">📅</span>
+                                                    <span className="text-sm font-medium text-gray-700">
+                                                        {new Date(payment.created_at).toLocaleDateString('id-ID', {
+                                                            year: 'numeric',
+                                                            month: 'short',
+                                                            day: 'numeric',
+                                                        })}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-5 text-center">
+                                                <button
+                                                    onClick={() => handleActivate(String(payment.payment_id || payment.id))}
+                                                    disabled={activateMutation.isPending}
+                                                    className="group relative bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-6 py-3 rounded-xl font-bold transition-all duration-300 hover:scale-110 hover:shadow-2xl overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-green-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                    <span className="relative flex items-center gap-2">
+                                                        <span className="text-xl">{activateMutation.isPending ? '⏳' : '✅'}</span>
+                                                        {activateMutation.isPending ? 'Processing...' : 'Activate'}
+                                                    </span>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
                 )}
             </div>
 
