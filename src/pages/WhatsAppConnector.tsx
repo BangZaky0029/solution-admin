@@ -28,6 +28,7 @@ const WhatsAppConnector: FC = () => {
         qrImage: null,
         user: null
     });
+    const [sessionId, setSessionId] = useState<string>('main-session');
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -48,7 +49,7 @@ const WhatsAppConnector: FC = () => {
      */
     const fetchStatus = useCallback(async () => {
         try {
-            const response = await fetch(`${WA_API_BASE}/api/whatsapp/status`);
+            const response = await fetch(`${WA_API_BASE}/api/whatsapp/${sessionId}/status`);
             const data = await response.json();
 
             if (data.success !== false) {
@@ -85,7 +86,7 @@ const WhatsAppConnector: FC = () => {
      */
     const fetchQRCode = async () => {
         try {
-            const response = await fetch(`${WA_API_BASE}/api/whatsapp/qr`);
+            const response = await fetch(`${WA_API_BASE}/api/whatsapp/${sessionId}/qr`);
             const data = await response.json();
 
             if (data.success && data.qrImage) {
@@ -109,7 +110,7 @@ const WhatsAppConnector: FC = () => {
         setSendResult(null);
 
         try {
-            const response = await fetch(`${WA_API_BASE}/api/whatsapp/send`, {
+            const response = await fetch(`${WA_API_BASE}/api/whatsapp/${sessionId}/send`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -156,7 +157,7 @@ const WhatsAppConnector: FC = () => {
 
         setLoggingOut(true);
         try {
-            const response = await fetch(`${WA_API_BASE}/api/whatsapp/logout`, {
+            const response = await fetch(`${WA_API_BASE}/api/whatsapp/${sessionId}/logout`, {
                 method: 'POST',
             });
 
@@ -201,7 +202,7 @@ const WhatsAppConnector: FC = () => {
         const interval = setInterval(fetchStatus, 10000);
 
         return () => clearInterval(interval);
-    }, [fetchStatus]);
+    }, [fetchStatus, sessionId]);
 
     // ============================================
     // UI Helpers
@@ -283,6 +284,28 @@ const WhatsAppConnector: FC = () => {
                                     )}
                                 </button>
                             )}
+                        </div>
+                    </div>
+
+                    {/* Session ID Selector */}
+                    <div className="mt-8 bg-black/10 backdrop-blur-md rounded-2xl p-4 border border-white/10 max-w-md">
+                        <label className="block text-emerald-100 text-xs font-bold uppercase tracking-wider mb-2">
+                            Switch Session Instance
+                        </label>
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={sessionId}
+                                onChange={(e) => setSessionId(e.target.value)}
+                                placeholder="Enter Session ID..."
+                                className="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all font-mono text-sm"
+                            />
+                            <button
+                                onClick={handleRefresh}
+                                className="bg-white text-emerald-600 rounded-xl px-4 py-2 font-bold hover:bg-emerald-50 transition-colors text-sm"
+                            >
+                                Switch
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -534,19 +557,19 @@ const WhatsAppConnector: FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                     <div className="bg-white p-3 rounded-xl">
                         <code className="text-green-600">GET</code>
-                        <span className="text-gray-600 ml-2">/api/whatsapp/status</span>
+                        <span className="text-gray-600 ml-2">/api/whatsapp/:sessionId/status</span>
                     </div>
                     <div className="bg-white p-3 rounded-xl">
                         <code className="text-green-600">GET</code>
-                        <span className="text-gray-600 ml-2">/api/whatsapp/qr</span>
+                        <span className="text-gray-600 ml-2">/api/whatsapp/:sessionId/qr</span>
                     </div>
                     <div className="bg-white p-3 rounded-xl">
                         <code className="text-blue-600">POST</code>
-                        <span className="text-gray-600 ml-2">/api/whatsapp/send</span>
+                        <span className="text-gray-600 ml-2">/api/whatsapp/:sessionId/send</span>
                     </div>
                     <div className="bg-white p-3 rounded-xl">
                         <code className="text-red-600">POST</code>
-                        <span className="text-gray-600 ml-2">/api/whatsapp/logout</span>
+                        <span className="text-gray-600 ml-2">/api/whatsapp/:sessionId/logout</span>
                     </div>
                 </div>
                 <p className="text-gray-500 text-xs mt-3">
