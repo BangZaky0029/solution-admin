@@ -257,11 +257,6 @@ const WhatsAppConnector: FC = () => {
     const activeAiCount = aiSessions.filter(s => s.status === 'open').length;
     const offlineAiCount = aiSessions.length - activeAiCount;
 
-    const filteredSessions = allSessions.filter(s =>
-        s.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (s.phone && s.phone.includes(searchTerm))
-    );
-
     return (
         <div className="space-y-8 animate-fade-in pb-12">
             {/* Header Card */}
