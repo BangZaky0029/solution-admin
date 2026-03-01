@@ -19,6 +19,12 @@ interface WhatsAppConnectionState {
 }
 
 const WhatsAppConnector: FC = () => {
+    const SESSIONS = [
+        { id: 'main-session', name: 'Main Gateway', icon: '⚡' },
+        { id: 'wa-bot-ai', name: 'AI Assistant', icon: '🤖' },
+        { id: 'CS-BOT', name: 'Customer Service', icon: '🏢' }
+    ];
+
     // Connection state
     const [connectionState, setConnectionState] = useState<WhatsAppConnectionState>({
         status: 'disconnected',
@@ -28,7 +34,7 @@ const WhatsAppConnector: FC = () => {
         qrImage: null,
         user: null
     });
-    const [sessionId, setSessionId] = useState<string>('main-session');
+    const [sessionId, setSessionId] = useState<string>(SESSIONS[0].id);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -44,49 +50,9 @@ const WhatsAppConnector: FC = () => {
     // API Functions
     // ============================================
 
-    /**
-     * Fetch connection status from WhatsApp Gateway
-     */
-    const fetchStatus = useCallback(async () => {
+    const fetchQRCode = useCallback(async (sid: string) => {
         try {
-            const response = await fetch(`${WA_API_BASE}/api/whatsapp/${sessionId}/status`);
-            const data = await response.json();
-
-            if (data.success !== false) {
-                setConnectionState({
-                    status: data.status || 'disconnected',
-                    isConnected: data.isConnected || false,
-                    phoneNumber: data.phoneNumber || null,
-                    hasQR: data.hasQR || false,
-                    qrImage: null,
-                    user: data.user || null
-                });
-
-                // If QR is available, fetch it
-                if (data.hasQR) {
-                    await fetchQRCode();
-                }
-            }
-            setError(null);
-        } catch (err) {
-            console.error('Error fetching status:', err);
-            setError('Failed to connect to WhatsApp Gateway');
-            setConnectionState(prev => ({
-                ...prev,
-                status: 'disconnected',
-                isConnected: false
-            }));
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    /**
-     * Fetch QR code for scanning
-     */
-    const fetchQRCode = async () => {
-        try {
-            const response = await fetch(`${WA_API_BASE}/api/whatsapp/${sessionId}/qr`);
+            const response = await fetch(`${WA_API_BASE}/api/whatsapp/${sid}/qr`);
             const data = await response.json();
 
             if (data.success && data.qrImage) {
@@ -99,7 +65,43 @@ const WhatsAppConnector: FC = () => {
         } catch (err) {
             console.error('Error fetching QR code:', err);
         }
-    };
+    }, []);
+
+    const fetchStatus = useCallback(async (sid: string) => {
+        try {
+            const response = await fetch(`${WA_API_BASE}/api/whatsapp/${sid}/status`);
+            const data = await response.json();
+
+            if (data.success !== false) {
+                setConnectionState({
+                    status: data.status || 'disconnected',
+                    isConnected: data.isConnected || false,
+                    phoneNumber: data.phoneNumber || null,
+                    hasQR: data.hasQR || false,
+                    qrImage: null,
+                    user: data.user || null
+                });
+
+                if (data.hasQR) {
+                    await fetchQRCode(sid);
+                }
+            }
+            setError(null);
+        } catch (err) {
+            console.error('Error fetching status:', err);
+            setError('Failed to connect to WhatsApp Gateway');
+            setConnectionState({
+                status: 'disconnected',
+                isConnected: false,
+                phoneNumber: null,
+                hasQR: false,
+                qrImage: null,
+                user: null
+            });
+        } finally {
+            setLoading(false);
+        }
+    }, [fetchQRCode]);
 
     /**
      * Send message via WhatsApp Gateway
@@ -172,8 +174,7 @@ const WhatsAppConnector: FC = () => {
                     qrImage: null,
                     user: null
                 });
-                // Refetch status to get new QR
-                setTimeout(() => fetchStatus(), 2000);
+                setTimeout(() => fetchStatus(sessionId), 2000);
             }
         } catch (error) {
             console.error('Logout failed:', error);
@@ -182,27 +183,21 @@ const WhatsAppConnector: FC = () => {
         }
     };
 
-    /**
-     * Refresh status manually
-     */
     const handleRefresh = () => {
         setLoading(true);
-        fetchStatus();
+        fetchStatus(sessionId);
     };
 
     // ============================================
     // Effects
     // ============================================
 
-    // Initial fetch and polling
     useEffect(() => {
-        fetchStatus();
-
-        // Poll every 10 seconds for status updates (slower for stable QR display)
-        const interval = setInterval(fetchStatus, 10000);
-
+        setLoading(true);
+        fetchStatus(sessionId);
+        const interval = setInterval(() => fetchStatus(sessionId), 10000);
         return () => clearInterval(interval);
-    }, [fetchStatus, sessionId]);
+    }, [sessionId, fetchStatus]);
 
     // ============================================
     // UI Helpers
@@ -235,32 +230,33 @@ const WhatsAppConnector: FC = () => {
     const statusConfig = getStatusConfig(displayStatus);
 
     return (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-6 animate-fade-in pb-12">
             {/* Header Card */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 rounded-3xl p-8 shadow-2xl">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full opacity-10 transform translate-x-1/2 -translate-y-1/2"></div>
-                <div className="absolute bottom-0 left-0 w-48 h-48 bg-white rounded-full opacity-10 transform -translate-x-1/2 translate-y-1/2"></div>
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#075e54] via-[#128c7e] to-[#25d366] rounded-3xl p-8 shadow-2xl border border-white/10">
+                <div className="absolute top-0 right-0 w-80 h-80 bg-white rounded-full opacity-5 transform translate-x-1/2 -translate-y-1/2"></div>
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-white rounded-full opacity-5 transform -translate-x-1/2 translate-y-1/2"></div>
 
                 <div className="relative z-10">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
-                                <span className="text-5xl">💬</span>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div className="flex items-center gap-6">
+                            <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-5 border border-white/20 shadow-inner">
+                                <span className="text-6xl drop-shadow-lg">🍃</span>
                             </div>
                             <div>
-                                <h1 className="text-4xl font-black text-white mb-2">
-                                    WhatsApp Gateway
+                                <h1 className="text-4xl font-extrabold text-white mb-2 tracking-tight">
+                                    WhatsApp <span className="text-[#dcf8c6]">Gateway</span>
                                 </h1>
-                                <p className="text-emerald-100 text-lg font-medium">
-                                    Connected to Baileys API • Supabase Session
+                                <p className="text-emerald-50/80 text-lg font-medium flex items-center gap-2">
+                                    <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                                    Cloud Multi-Session Infrastructure
                                 </p>
                             </div>
                         </div>
-                        <div className="flex gap-3">
+                        <div className="flex gap-4">
                             <button
                                 onClick={handleRefresh}
                                 disabled={loading}
-                                className="bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-xl px-4 py-2 text-white font-semibold transition-all duration-300 flex items-center gap-2"
+                                className="bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md rounded-2xl px-6 py-3 text-white font-bold transition-all duration-300 flex items-center gap-3 active:scale-95 shadow-lg"
                             >
                                 <span className={loading ? 'animate-spin' : ''}>🔄</span>
                                 Refresh
@@ -269,254 +265,231 @@ const WhatsAppConnector: FC = () => {
                                 <button
                                     onClick={handleLogout}
                                     disabled={loggingOut}
-                                    className="bg-red-500/80 hover:bg-red-600 backdrop-blur-sm rounded-xl px-4 py-2 text-white font-semibold transition-all duration-300 flex items-center gap-2"
+                                    className="bg-red-500/20 hover:bg-red-500/40 border border-red-500/30 backdrop-blur-md rounded-2xl px-6 py-3 text-red-100 font-bold transition-all duration-300 flex items-center gap-3 active:scale-95 shadow-lg"
                                 >
-                                    {loggingOut ? (
-                                        <>
-                                            <span className="animate-spin">⏳</span>
-                                            Logging out...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <span>🚪</span>
-                                            Logout
-                                        </>
-                                    )}
+                                    {loggingOut ? '⏳' : '🚪'} Logout
                                 </button>
                             )}
                         </div>
                     </div>
 
-                    {/* Session ID Selector */}
-                    <div className="mt-8 bg-black/10 backdrop-blur-md rounded-2xl p-4 border border-white/10 max-w-md">
-                        <label className="block text-emerald-100 text-xs font-bold uppercase tracking-wider mb-2">
-                            Switch Session Instance
-                        </label>
-                        <div className="flex gap-2">
-                            <input
-                                type="text"
-                                value={sessionId}
-                                onChange={(e) => setSessionId(e.target.value)}
-                                placeholder="Enter Session ID..."
-                                className="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all font-mono text-sm"
-                            />
+                    {/* NEW: Premium Session Selector */}
+                    <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {SESSIONS.map((s) => (
                             <button
-                                onClick={handleRefresh}
-                                className="bg-white text-emerald-600 rounded-xl px-4 py-2 font-bold hover:bg-emerald-50 transition-colors text-sm"
+                                key={s.id}
+                                onClick={() => setSessionId(s.id)}
+                                className={`group relative flex items-center gap-4 p-5 rounded-2xl border-2 transition-all duration-500 ${sessionId === s.id
+                                    ? 'bg-white border-white shadow-2xl scale-105'
+                                    : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
+                                    }`}
                             >
-                                Switch
+                                <div className={`text-3xl p-3 rounded-xl transition-all duration-500 ${sessionId === s.id ? 'bg-[#dcf8c6] scale-110 shadow-md' : 'bg-white/10'
+                                    }`}>
+                                    {s.icon}
+                                </div>
+                                <div className="text-left">
+                                    <p className={`text-xs font-black uppercase tracking-[0.2em] mb-1 ${sessionId === s.id ? 'text-[#075e54]/50' : 'text-white/40'
+                                        }`}>
+                                        Instance
+                                    </p>
+                                    <p className={`text-lg font-black ${sessionId === s.id ? 'text-[#075e54]' : 'text-white'
+                                        }`}>
+                                        {s.name}
+                                    </p>
+                                </div>
+                                {sessionId === s.id && (
+                                    <div className="absolute -top-3 -right-3 bg-[#25d366] text-white p-1 rounded-full border-4 border-[#128c7e] shadow-lg animate-bounce">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                        </svg>
+                                    </div>
+                                )}
                             </button>
-                        </div>
+                        ))}
                     </div>
                 </div>
             </div>
 
             {/* Error Alert */}
             {error && (
-                <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4 flex items-center gap-3">
-                    <span className="text-2xl">⚠️</span>
+                <div className="bg-red-50 border-2 border-red-200 rounded-3xl p-6 flex items-center gap-4 animate-shake shadow-xl">
+                    <div className="bg-red-100 p-3 rounded-2xl text-3xl">⚠️</div>
                     <div>
-                        <p className="font-bold text-red-800">Connection Error</p>
-                        <p className="text-red-600 text-sm">{error}</p>
-                        <p className="text-red-500 text-xs mt-1">
-                            Make sure WhatsApp Gateway is running on {WA_API_BASE}
-                        </p>
+                        <p className="font-black text-red-900 text-lg uppercase tracking-wider">Gateway Connection Lost</p>
+                        <p className="text-red-700 font-medium">{error}</p>
                     </div>
                 </div>
             )}
 
             {/* Status & QR Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Status Card */}
-                <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
-                    <div className={`bg-gradient-to-r ${statusConfig.color} p-6`}>
-                        <div className="flex items-center gap-4">
-                            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3">
-                                <span className="text-4xl">{statusConfig.icon}</span>
+                <div className="group bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100 hover:shadow-emerald-100 transition-all duration-500">
+                    <div className={`bg-gradient-to-r ${statusConfig.color} p-7 transition-colors duration-500`}>
+                        <div className="flex items-center gap-5">
+                            <div className="bg-white/20 backdrop-blur-md rounded-2xl p-4 shadow-inner">
+                                <span className="text-5xl drop-shadow-md">{statusConfig.icon}</span>
                             </div>
                             <div>
-                                <h2 className="text-xl font-black text-white">Connection Status</h2>
-                                <p className="text-white/90 font-semibold mt-1">{statusConfig.label}</p>
+                                <h2 className="text-2xl font-black text-white tracking-tight">Session Intel</h2>
+                                <p className="text-white/90 font-bold mt-1 uppercase text-sm tracking-widest">{statusConfig.label}</p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="p-8">
-                        {/* Status Indicator */}
-                        <div className="flex items-center justify-center mb-6">
+                    <div className="p-10">
+                        <div className="flex items-center justify-center mb-10">
                             <div className="relative">
-                                <div className={`w-24 h-24 rounded-full bg-gradient-to-br ${statusConfig.color} flex items-center justify-center shadow-xl`}>
-                                    <span className="text-5xl">{statusConfig.icon}</span>
+                                <div className={`w-32 h-32 rounded-[2rem] bg-gradient-to-br ${statusConfig.color} flex items-center justify-center shadow-2xl rotate-3 group-hover:rotate-0 transition-all duration-500`}>
+                                    <span className="text-6xl drop-shadow-lg">{statusConfig.icon}</span>
                                 </div>
                                 {displayStatus === 'ready' && (
-                                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 animate-ping opacity-20"></div>
+                                    <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-green-400 to-emerald-500 animate-ping opacity-20"></div>
                                 )}
                             </div>
                         </div>
 
-                        {/* Status Details */}
                         <div className="space-y-4">
-                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                                <span className="text-gray-600 font-medium">Status</span>
-                                <span className={`font-bold capitalize ${displayStatus === 'ready' ? 'text-green-600' :
-                                    displayStatus === 'qr' ? 'text-yellow-600' :
-                                        displayStatus === 'error' || displayStatus === 'disconnected' ? 'text-red-600' :
-                                            'text-gray-600'
-                                    }`}>
-                                    {connectionState.status}
-                                </span>
-                            </div>
-
-                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                                <span className="text-gray-600 font-medium">Gateway</span>
-                                <span className={`font-bold ${!error ? 'text-green-600' : 'text-red-600'}`}>
-                                    {!error ? '🟢 Online' : '🔴 Offline'}
-                                </span>
-                            </div>
-
-                            {connectionState.phoneNumber && (
-                                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                                    <span className="text-gray-600 font-medium">Phone</span>
-                                    <span className="font-bold text-gray-800">+{connectionState.phoneNumber}</span>
+                            {[
+                                { label: 'Auth Status', value: connectionState.status, type: 'status' },
+                                { label: 'Node Engine', value: !error ? '🟢 ACTIVE' : '🔴 OFFLINE', type: 'online' },
+                                { label: 'Registered ID', value: connectionState.phoneNumber ? `+${connectionState.phoneNumber}` : 'Unidentified', type: 'id' },
+                                { label: 'Cloud Identity', value: connectionState.user?.name || 'Guest Instance', type: 'name' }
+                            ].map((item, idx) => (
+                                <div key={idx} className="flex items-center justify-between p-5 bg-gray-50/80 hover:bg-[#dcf8c6]/30 rounded-2xl transition-colors duration-300 border border-transparent hover:border-[#25d366]/20">
+                                    <span className="text-gray-500 font-black uppercase text-xs tracking-[0.2em]">{item.label}</span>
+                                    <span className={`font-black tracking-tight ${item.type === 'status' ? (displayStatus === 'ready' ? 'text-green-600' : 'text-yellow-600') :
+                                        item.type === 'online' ? (!error ? 'text-emerald-500' : 'text-red-500') : 'text-gray-800'
+                                        }`}>
+                                        {item.value}
+                                    </span>
                                 </div>
-                            )}
-
-                            {connectionState.user?.name && (
-                                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                                    <span className="text-gray-600 font-medium">Name</span>
-                                    <span className="font-bold text-gray-800">{connectionState.user.name}</span>
-                                </div>
-                            )}
+                            ))}
                         </div>
                     </div>
                 </div>
 
                 {/* QR Code Card */}
-                <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
-                    <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-6">
-                        <div className="flex items-center gap-4">
-                            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3">
-                                <span className="text-4xl">📱</span>
+                <div className="group bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100 hover:shadow-purple-100 transition-all duration-500">
+                    <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-7">
+                        <div className="flex items-center gap-5">
+                            <div className="bg-white/20 backdrop-blur-md rounded-2xl p-4 shadow-inner">
+                                <span className="text-5xl drop-shadow-md">🔗</span>
                             </div>
                             <div>
-                                <h2 className="text-xl font-black text-white">QR Code Scanner</h2>
-                                <p className="text-white/90 font-medium mt-1">Scan to link WhatsApp</p>
+                                <h2 className="text-2xl font-black text-white tracking-tight">Device Linking</h2>
+                                <p className="text-white/90 font-bold mt-1 uppercase text-sm tracking-widest">Connect your mobile device</p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="p-8 flex flex-col items-center justify-center min-h-[300px]">
+                    <div className="p-10 flex flex-col items-center justify-center min-h-[420px]">
                         {loading ? (
-                            <div className="text-center">
-                                <div className="inline-block bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl p-8 mb-4">
-                                    <span className="text-8xl animate-pulse">⏳</span>
+                            <div className="text-center animate-pulse">
+                                <div className="inline-block bg-gradient-to-br from-gray-100 to-gray-200 rounded-[2rem] p-12 mb-6 shadow-inner">
+                                    <span className="text-9xl">📡</span>
                                 </div>
-                                <p className="text-xl font-bold text-gray-600">Loading...</p>
-                                <p className="text-gray-500 mt-2">Connecting to gateway</p>
+                                <p className="text-2xl font-black text-gray-800 tracking-tight">Syncing Instance...</p>
+                                <p className="text-gray-500 font-bold uppercase text-xs tracking-widest mt-2">{sessionId}</p>
                             </div>
                         ) : connectionState.qrImage ? (
-                            <div className="relative">
-                                <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl blur-md opacity-30"></div>
-                                <div className="relative bg-white p-4 rounded-2xl shadow-xl">
-                                    <img src={connectionState.qrImage} alt="QR Code" className="w-64 h-64" />
+                            <div className="relative group/qr">
+                                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-3xl blur-2xl opacity-20 group-hover/qr:opacity-40 transition-opacity duration-500"></div>
+                                <div className="relative bg-white p-6 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-8 border-gray-50">
+                                    <img src={connectionState.qrImage} alt="QR Code" className="w-64 h-64 rounded-xl" />
                                 </div>
-                                <p className="text-center mt-4 text-gray-600 font-medium">
-                                    Scan this QR with WhatsApp
-                                </p>
-                                <p className="text-center text-gray-400 text-sm mt-1">
-                                    Linked Devices → Link a Device
-                                </p>
+                                <div className="text-center mt-8">
+                                    <p className="text-xl font-black text-gray-800 tracking-tight">Scan with WhatsApp</p>
+                                    <div className="flex items-center justify-center gap-2 mt-2">
+                                        <span className="text-xs font-black bg-purple-100 text-purple-600 px-3 py-1 rounded-full uppercase tracking-wider">Linked Devices</span>
+                                        <span className="text-gray-400">→</span>
+                                        <span className="text-xs font-black bg-indigo-100 text-indigo-600 px-3 py-1 rounded-full uppercase tracking-wider">Link a Device</span>
+                                    </div>
+                                </div>
                             </div>
                         ) : displayStatus === 'ready' ? (
-                            <div className="text-center">
-                                <div className="inline-block bg-gradient-to-br from-green-100 to-emerald-100 rounded-3xl p-8 mb-4">
-                                    <span className="text-8xl">✅</span>
+                            <div className="text-center group-hover:scale-105 transition-transform duration-500">
+                                <div className="inline-block bg-gradient-to-br from-emerald-50 to-green-100 rounded-[2.5rem] p-12 mb-8 shadow-inner relative">
+                                    <span className="text-9xl drop-shadow-xl relative z-10">🌿</span>
+                                    <div className="absolute inset-0 rounded-[2.5rem] bg-green-200/50 scale-90 blur-xl"></div>
                                 </div>
-                                <p className="text-2xl font-bold text-green-600">Connected!</p>
-                                <p className="text-gray-600 mt-2">WhatsApp is ready to send messages</p>
-                                {connectionState.phoneNumber && (
-                                    <p className="text-green-500 font-semibold mt-1">+{connectionState.phoneNumber}</p>
-                                )}
+                                <p className="text-4xl font-black text-[#075e54] tracking-tight">Identity Verified</p>
+                                <p className="text-gray-500 font-bold mt-3 max-w-[280px] mx-auto leading-relaxed">Instance <span className="text-[#25d366]">{sessionId}</span> is actively processing requests</p>
                             </div>
                         ) : (
                             <div className="text-center">
-                                <div className="inline-block bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl p-8 mb-4">
-                                    <span className="text-8xl">💤</span>
+                                <div className="inline-block bg-gradient-to-br from-gray-50 to-gray-100 rounded-[2rem] p-12 mb-6 border-4 border-dashed border-gray-200">
+                                    <span className="text-8xl opacity-50">💤</span>
                                 </div>
-                                <p className="text-xl font-bold text-gray-600">Waiting for Connection</p>
-                                <p className="text-gray-500 mt-2">QR code will appear here</p>
-                                {error && (
-                                    <p className="text-red-500 text-sm mt-2">Check if gateway is running</p>
-                                )}
+                                <p className="text-2xl font-black text-gray-400 tracking-tight uppercase tracking-[0.2em]">Hibernating</p>
+                                <p className="text-gray-400 font-bold text-sm mt-3">Waiting for terminal signals...</p>
                             </div>
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* Send Message Card */}
+            {/* Manual Response Card */}
             {displayStatus === 'ready' && (
-                <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
-                    <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6">
-                        <div className="flex items-center gap-4">
-                            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3">
-                                <span className="text-4xl">✉️</span>
+                <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100 mt-12">
+                    <div className="bg-gradient-to-r from-[#075e54] to-[#128c7e] p-8">
+                        <div className="flex items-center gap-6">
+                            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20 shadow-inner">
+                                <span className="text-5xl">⚡</span>
                             </div>
                             <div>
-                                <h2 className="text-xl font-black text-white">Send Manual Message</h2>
-                                <p className="text-white/90 font-medium mt-1">Send a test message via WhatsApp</p>
+                                <h2 className="text-2xl font-black text-white tracking-tight">Direct Terminal</h2>
+                                <p className="text-white/80 font-bold mt-1 uppercase text-sm tracking-widest">Send prioritized manual response</p>
                             </div>
                         </div>
                     </div>
 
-                    <form onSubmit={handleSendMessage} className="p-8 space-y-6">
-                        {/* Result Alert */}
+                    <form onSubmit={handleSendMessage} className="p-12 space-y-8">
                         {sendResult && (
-                            <div className={`p-4 rounded-xl flex items-center gap-3 ${sendResult.success
-                                ? 'bg-green-50 border-2 border-green-200'
-                                : 'bg-red-50 border-2 border-red-200'
+                            <div className={`p-6 rounded-3xl flex items-center gap-5 animate-slide-up ${sendResult.success ? 'bg-emerald-50 border-2 border-emerald-200 shadow-lg shadow-emerald-50' : 'bg-red-50 border-2 border-red-200'
                                 }`}>
-                                <span className="text-2xl">{sendResult.success ? '✅' : '❌'}</span>
+                                <div className={`text-3xl p-3 rounded-2xl ${sendResult.success ? 'bg-emerald-100' : 'bg-red-100'}`}>
+                                    {sendResult.success ? '✨' : '💥'}
+                                </div>
                                 <div>
-                                    <p className={`font-bold ${sendResult.success ? 'text-green-800' : 'text-red-800'}`}>
-                                        {sendResult.success ? 'Success!' : 'Failed!'}
+                                    <p className={`font-black text-xl tracking-tight ${sendResult.success ? 'text-emerald-900' : 'text-red-900'}`}>
+                                        {sendResult.success ? 'Transmission Success!' : 'System Failure!'}
                                     </p>
-                                    <p className={`text-sm ${sendResult.success ? 'text-green-600' : 'text-red-600'}`}>
-                                        {sendResult.message}
-                                    </p>
+                                    <p className={`font-bold ${sendResult.success ? 'text-emerald-600' : 'text-red-600'}`}>{sendResult.message}</p>
                                 </div>
                             </div>
                         )}
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                    <span>📱</span> Phone Number
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                            <div className="space-y-4">
+                                <label className="flex items-center gap-3 text-xs font-black text-gray-500 uppercase tracking-[0.2em] ml-2">
+                                    <span className="w-1.5 h-1.5 bg-[#25d366] rounded-full"></span> Destination JID
                                 </label>
                                 <input
                                     type="text"
                                     name="phone"
                                     value={sendForm.phone}
                                     onChange={handleFormChange}
-                                    placeholder="628123456789"
-                                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-300 focus:border-purple-500 transition-all duration-300 outline-none font-medium"
+                                    placeholder="e.g. 628123456789"
+                                    className="w-full px-6 py-5 bg-gray-50 border-2 border-gray-100 rounded-3xl focus:ring-[10px] focus:ring-[#25d366]/10 focus:border-[#25d366] transition-all duration-300 outline-none font-black text-xl placeholder:text-gray-300"
                                     required
                                     disabled={sending}
                                 />
-                                <p className="text-xs text-gray-500 mt-1">Format: 628xxxxxxxxxx (without +)</p>
+                                <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest ml-4">International format required (Omit '+')</p>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                    <span>💬</span> Message
+                            <div className="space-y-4">
+                                <label className="flex items-center gap-3 text-xs font-black text-gray-500 uppercase tracking-[0.2em] ml-2">
+                                    <span className="w-1.5 h-1.5 bg-[#128c7e] rounded-full"></span> Data Payload
                                 </label>
                                 <textarea
                                     name="message"
                                     value={sendForm.message}
                                     onChange={handleFormChange}
-                                    placeholder="Enter your message..."
+                                    placeholder="Type your message broadcast here..."
                                     rows={3}
-                                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-300 focus:border-purple-500 transition-all duration-300 outline-none font-medium resize-none"
+                                    className="w-full px-6 py-5 bg-gray-50 border-2 border-gray-100 rounded-3xl focus:ring-[10px] focus:ring-[#128c7e]/10 focus:border-[#128c7e] transition-all duration-300 outline-none font-bold text-lg placeholder:text-gray-300 resize-none"
                                     required
                                     disabled={sending}
                                 />
@@ -526,56 +499,27 @@ const WhatsAppConnector: FC = () => {
                         <button
                             type="submit"
                             disabled={sending}
-                            className={`w-full py-4 rounded-xl font-bold text-white text-lg transition-all duration-300 transform relative overflow-hidden ${sending
-                                ? 'bg-gray-400 cursor-not-allowed'
-                                : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 hover:scale-105 hover:shadow-xl'
+                            className={`w-full py-6 rounded-3xl font-black text-white text-xl tracking-widest transition-all duration-500 transform group relative overflow-hidden shadow-2xl ${sending ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#25d366] hover:bg-[#075e54] hover:-translate-y-1 active:scale-95'
                                 }`}
                         >
-                            <span className="relative flex items-center justify-center gap-3">
+                            <span className="relative z-10 flex items-center justify-center gap-4">
                                 {sending ? (
                                     <>
-                                        <span className="animate-spin text-2xl">⏳</span>
-                                        Sending...
+                                        <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        TRANSMITTING...
                                     </>
                                 ) : (
                                     <>
-                                        <span className="text-2xl">📤</span>
-                                        Send Message
+                                        <span className="text-3xl">🚀</span>
+                                        EXECUTE BROADCAST
                                     </>
                                 )}
                             </span>
+                            <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
                         </button>
                     </form>
                 </div>
             )}
-
-            {/* API Info Card */}
-            <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
-                <h3 className="font-bold text-gray-700 flex items-center gap-2 mb-3">
-                    <span>🔌</span> API Endpoints
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                    <div className="bg-white p-3 rounded-xl">
-                        <code className="text-green-600">GET</code>
-                        <span className="text-gray-600 ml-2">/api/whatsapp/:sessionId/status</span>
-                    </div>
-                    <div className="bg-white p-3 rounded-xl">
-                        <code className="text-green-600">GET</code>
-                        <span className="text-gray-600 ml-2">/api/whatsapp/:sessionId/qr</span>
-                    </div>
-                    <div className="bg-white p-3 rounded-xl">
-                        <code className="text-blue-600">POST</code>
-                        <span className="text-gray-600 ml-2">/api/whatsapp/:sessionId/send</span>
-                    </div>
-                    <div className="bg-white p-3 rounded-xl">
-                        <code className="text-red-600">POST</code>
-                        <span className="text-gray-600 ml-2">/api/whatsapp/:sessionId/logout</span>
-                    </div>
-                </div>
-                <p className="text-gray-500 text-xs mt-3">
-                    Gateway URL: <code className="bg-gray-200 px-2 py-1 rounded">{WA_API_BASE}</code>
-                </p>
-            </div>
         </div>
     );
 };
