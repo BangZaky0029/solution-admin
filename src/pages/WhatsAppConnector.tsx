@@ -38,6 +38,10 @@ const WhatsAppConnector: FC = () => {
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
+    // Session Registry state
+    const [allSessions, setAllSessions] = useState<any[]>([]);
+    const [searchTerm, setSearchTerm] = useState<string>('');
+
     // Send message state
     const [sendForm, setSendForm] = useState<SendMessageForm>({ phone: '', message: '' });
     const [sendResult, setSendResult] = useState<SendMessageResult | null>(null);
@@ -49,6 +53,18 @@ const WhatsAppConnector: FC = () => {
     // ============================================
     // API Functions
     // ============================================
+
+    const fetchAllSessions = useCallback(async () => {
+        try {
+            const response = await fetch(`${WA_API_BASE}/`);
+            const data = await response.json();
+            if (data.sessions) {
+                setAllSessions(data.sessions);
+            }
+        } catch (err) {
+            console.error('Error fetching all sessions:', err);
+        }
+    }, []);
 
     const fetchQRCode = useCallback(async (sid: string) => {
         try {
@@ -87,6 +103,7 @@ const WhatsAppConnector: FC = () => {
                 }
             }
             setError(null);
+            await fetchAllSessions();
         } catch (err) {
             console.error('Error fetching status:', err);
             setError('Failed to connect to WhatsApp Gateway');
@@ -101,7 +118,7 @@ const WhatsAppConnector: FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [fetchQRCode]);
+    }, [fetchQRCode, fetchAllSessions]);
 
     /**
      * Send message via WhatsApp Gateway
@@ -132,6 +149,7 @@ const WhatsAppConnector: FC = () => {
                     sentTo: sendForm.phone,
                 });
                 setSendForm({ phone: '', message: '' });
+                await fetchAllSessions();
             } else {
                 setSendResult({
                     success: false,
@@ -153,7 +171,7 @@ const WhatsAppConnector: FC = () => {
      * Logout and clear session
      */
     const handleLogout = async () => {
-        if (!confirm('Are you sure you want to logout? You will need to scan QR code again.')) {
+        if (!confirm(`Are you sure you want to logout [${sessionId}]? You will need to scan QR code again.`)) {
             return;
         }
 
@@ -166,6 +184,7 @@ const WhatsAppConnector: FC = () => {
             const data = await response.json();
 
             if (data.success) {
+                // Clear local connection state safely
                 setConnectionState({
                     status: 'disconnected',
                     isConnected: false,
@@ -174,7 +193,11 @@ const WhatsAppConnector: FC = () => {
                     qrImage: null,
                     user: null
                 });
-                setTimeout(() => fetchStatus(sessionId), 2000);
+                // Wait for backend to finish clearing and then refresh
+                setTimeout(() => {
+                    fetchStatus(sessionId);
+                    fetchAllSessions();
+                }, 2000);
             }
         } catch (error) {
             console.error('Logout failed:', error);
@@ -195,9 +218,10 @@ const WhatsAppConnector: FC = () => {
     useEffect(() => {
         setLoading(true);
         fetchStatus(sessionId);
+        fetchAllSessions(); // Fetch all sessions on initial load and session change
         const interval = setInterval(() => fetchStatus(sessionId), 10000);
         return () => clearInterval(interval);
-    }, [sessionId, fetchStatus]);
+    }, [sessionId, fetchStatus, fetchAllSessions]);
 
     // ============================================
     // UI Helpers
@@ -229,25 +253,37 @@ const WhatsAppConnector: FC = () => {
     const displayStatus = getDisplayStatus();
     const statusConfig = getStatusConfig(displayStatus);
 
+    const aiSessions = allSessions.filter(s => s.id.startsWith('wa-bot-ai'));
+    const activeAiCount = aiSessions.filter(s => s.status === 'open').length;
+    const offlineAiCount = aiSessions.length - activeAiCount;
+
+    const filteredSessions = allSessions.filter(s =>
+        s.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (s.phone && s.phone.includes(searchTerm))
+    );
+
     return (
-        <div className="space-y-6 animate-fade-in pb-12">
+        <div className="space-y-8 animate-fade-in pb-12">
             {/* Header Card */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-[#075e54] via-[#128c7e] to-[#25d366] rounded-3xl p-8 shadow-2xl border border-white/10">
-                <div className="absolute top-0 right-0 w-80 h-80 bg-white rounded-full opacity-5 transform translate-x-1/2 -translate-y-1/2"></div>
-                <div className="absolute bottom-0 left-0 w-64 h-64 bg-white rounded-full opacity-5 transform -translate-x-1/2 translate-y-1/2"></div>
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#075e54] via-[#128c7e] to-[#25d366] rounded-[3rem] p-10 shadow-2xl border border-white/10">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full opacity-5 transform translate-x-1/2 -translate-y-1/2 blur-3xl"></div>
+                <div className="absolute bottom-0 left-0 w-80 h-80 bg-white rounded-full opacity-5 transform -translate-x-1/2 translate-y-1/2 blur-3xl"></div>
 
                 <div className="relative z-10">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div className="flex items-center gap-6">
-                            <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-5 border border-white/20 shadow-inner">
-                                <span className="text-6xl drop-shadow-lg">🍃</span>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+                        <div className="flex items-center gap-8">
+                            <div className="bg-white/15 backdrop-blur-2xl rounded-[2.5rem] p-6 border border-white/30 shadow-[inset_0_2px_10px_rgba(255,255,255,0.2)]">
+                                <span className="text-7xl drop-shadow-2xl">🍃</span>
                             </div>
                             <div>
-                                <h1 className="text-4xl font-extrabold text-white mb-2 tracking-tight">
-                                    WhatsApp <span className="text-[#dcf8c6]">Gateway</span>
+                                <h1 className="text-5xl font-black text-white mb-3 tracking-tighter">
+                                    Gateway <span className="text-[#dcf8c6]">APTO</span>
                                 </h1>
-                                <p className="text-emerald-50/80 text-lg font-medium flex items-center gap-2">
-                                    <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                                <p className="text-emerald-50/90 text-xl font-bold flex items-center gap-3">
+                                    <span className="relative flex h-3 w-3">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-green-300 shadow-[0_0_10px_#86efac]"></span>
+                                    </span>
                                     Cloud Multi-Session Infrastructure
                                 </p>
                             </div>
@@ -256,50 +292,58 @@ const WhatsAppConnector: FC = () => {
                             <button
                                 onClick={handleRefresh}
                                 disabled={loading}
-                                className="bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md rounded-2xl px-6 py-3 text-white font-bold transition-all duration-300 flex items-center gap-3 active:scale-95 shadow-lg"
+                                className="bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md rounded-2xl px-8 py-4 text-white font-black transition-all duration-300 flex items-center gap-3 active:scale-95 shadow-xl group"
                             >
-                                <span className={loading ? 'animate-spin' : ''}>🔄</span>
-                                Refresh
+                                <span className={`text-2xl transition-transform duration-700 ${loading ? 'animate-spin' : 'group-hover:rotate-180'}`}>🔄</span>
+                                REFRESH
                             </button>
                             {connectionState.isConnected && (
                                 <button
                                     onClick={handleLogout}
                                     disabled={loggingOut}
-                                    className="bg-red-500/20 hover:bg-red-500/40 border border-red-500/30 backdrop-blur-md rounded-2xl px-6 py-3 text-red-100 font-bold transition-all duration-300 flex items-center gap-3 active:scale-95 shadow-lg"
+                                    className="bg-red-500/20 hover:bg-red-500/40 border border-red-500/30 backdrop-blur-md rounded-2xl px-8 py-4 text-red-100 font-black transition-all duration-300 flex items-center gap-3 active:scale-95 shadow-xl"
                                 >
-                                    {loggingOut ? '⏳' : '🚪'} Logout
+                                    <span className="text-2xl">{loggingOut ? '⏳' : '🚪'}</span> LOGOUT
                                 </button>
                             )}
                         </div>
                     </div>
 
-                    {/* NEW: Premium Session Selector */}
-                    <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Premium Session Selector */}
+                    <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
                         {SESSIONS.map((s) => (
                             <button
                                 key={s.id}
                                 onClick={() => setSessionId(s.id)}
-                                className={`group relative flex items-center gap-4 p-5 rounded-2xl border-2 transition-all duration-500 ${sessionId === s.id
-                                    ? 'bg-white border-white shadow-2xl scale-105'
+                                className={`group relative flex items-center gap-6 p-6 rounded-3xl border-2 transition-all duration-500 ${sessionId === s.id
+                                    ? 'bg-white border-white shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] scale-[1.03] z-20'
                                     : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
                                     }`}
                             >
-                                <div className={`text-3xl p-3 rounded-xl transition-all duration-500 ${sessionId === s.id ? 'bg-[#dcf8c6] scale-110 shadow-md' : 'bg-white/10'
+                                <div className={`text-4xl p-4 rounded-2xl transition-all duration-500 shadow-lg ${sessionId === s.id ? 'bg-[#dcf8c6] scale-110' : 'bg-white/10 group-hover:bg-white/20'
                                     }`}>
                                     {s.icon}
                                 </div>
-                                <div className="text-left">
-                                    <p className={`text-xs font-black uppercase tracking-[0.2em] mb-1 ${sessionId === s.id ? 'text-[#075e54]/50' : 'text-white/40'
+                                <div className="text-left flex-1">
+                                    <p className={`text-xs font-black uppercase tracking-[0.25em] mb-1.5 ${sessionId === s.id ? 'text-[#075e54]/50' : 'text-white/40'
                                         }`}>
-                                        Instance
+                                        INSTANCE
                                     </p>
-                                    <p className={`text-lg font-black ${sessionId === s.id ? 'text-[#075e54]' : 'text-white'
-                                        }`}>
-                                        {s.name}
-                                    </p>
+                                    <div className="flex items-center justify-between">
+                                        <p className={`text-xl font-black ${sessionId === s.id ? 'text-[#075e54]' : 'text-white'
+                                            }`}>
+                                            {s.name}
+                                        </p>
+                                        {s.id === 'wa-bot-ai' && (
+                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${sessionId === s.id ? 'bg-purple-100 text-purple-600' : 'bg-white/10 text-white/60'
+                                                }`}>
+                                                MULTI
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                                 {sessionId === s.id && (
-                                    <div className="absolute -top-3 -right-3 bg-[#25d366] text-white p-1 rounded-full border-4 border-[#128c7e] shadow-lg animate-bounce">
+                                    <div className="absolute -top-3 -right-3 bg-[#25d366] text-white p-2 rounded-full border-4 border-[#128c7e] shadow-lg animate-bounce z-30">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                         </svg>
@@ -313,211 +357,275 @@ const WhatsAppConnector: FC = () => {
 
             {/* Error Alert */}
             {error && (
-                <div className="bg-red-50 border-2 border-red-200 rounded-3xl p-6 flex items-center gap-4 animate-shake shadow-xl">
-                    <div className="bg-red-100 p-3 rounded-2xl text-3xl">⚠️</div>
+                <div className="bg-red-50 border-2 border-red-200 rounded-[2.5rem] p-8 flex items-center gap-6 animate-shake shadow-2xl">
+                    <div className="bg-red-100 p-4 rounded-2xl text-4xl shadow-inner">⚠️</div>
                     <div>
-                        <p className="font-black text-red-900 text-lg uppercase tracking-wider">Gateway Connection Lost</p>
-                        <p className="text-red-700 font-medium">{error}</p>
+                        <p className="font-black text-red-900 text-xl uppercase tracking-widest">Gateway Connection Lost</p>
+                        <p className="text-red-700 font-bold mt-1 text-lg">{error}</p>
                     </div>
                 </div>
             )}
 
-            {/* Status & QR Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Status Card */}
-                <div className="group bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100 hover:shadow-emerald-100 transition-all duration-500">
-                    <div className={`bg-gradient-to-r ${statusConfig.color} p-7 transition-colors duration-500`}>
-                        <div className="flex items-center gap-5">
-                            <div className="bg-white/20 backdrop-blur-md rounded-2xl p-4 shadow-inner">
-                                <span className="text-5xl drop-shadow-md">{statusConfig.icon}</span>
+            {/* Specialized View Logic */}
+            {sessionId === 'wa-bot-ai' ? (
+                <div className="space-y-8 animate-in slide-in-from-bottom-5 duration-700">
+                    {/* AI Stats Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div className="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-[2.5rem] p-10 text-white shadow-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform duration-500">
+                            <div className="absolute -right-8 -bottom-8 text-[12rem] opacity-10 rotate-12 group-hover:rotate-0 transition-transform duration-700">🤖</div>
+                            <div className="relative z-10">
+                                <p className="text-blue-100 font-black uppercase tracking-[0.25em] text-sm mb-4">Total AI Instances</p>
+                                <div className="flex items-baseline gap-4">
+                                    <h3 className="text-7xl font-black tracking-tighter">{aiSessions.length}</h3>
+                                    <span className="text-blue-200 font-bold text-xl uppercase tracking-widest">Accounts</span>
+                                </div>
+                                <div className="mt-8 flex gap-3">
+                                    <span className="bg-white/10 px-4 py-2 rounded-xl text-xs font-black backdrop-blur-md border border-white/20">Scalable AI</span>
+                                    <span className="bg-white/10 px-4 py-2 rounded-xl text-xs font-black backdrop-blur-md border border-white/20">Isolated Storage</span>
+                                </div>
                             </div>
-                            <div>
-                                <h2 className="text-2xl font-black text-white tracking-tight">Session Intel</h2>
-                                <p className="text-white/90 font-bold mt-1 uppercase text-sm tracking-widest">{statusConfig.label}</p>
+                        </div>
+
+                        <div className="bg-white rounded-[2.5rem] p-10 border border-emerald-100 shadow-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform duration-500">
+                            <div className="absolute -right-6 -bottom-6 text-9xl opacity-5 group-hover:scale-110 transition-transform duration-500">🟢</div>
+                            <p className="text-emerald-500 font-black uppercase tracking-[0.25em] text-sm mb-4">Active Nodes</p>
+                            <h3 className="text-7xl font-black text-gray-900 tracking-tighter">{activeAiCount}</h3>
+                            <div className="mt-8">
+                                <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest mb-2">System Health</p>
+                                <div className="w-full bg-emerald-50 h-3 rounded-full overflow-hidden shadow-inner">
+                                    <div
+                                        className="bg-emerald-500 h-full rounded-full transition-all duration-1000"
+                                        style={{ width: `${(activeAiCount / (aiSessions.length || 1)) * 100}%` }}
+                                    ></div>
+                                </div>
                             </div>
+                        </div>
+
+                        <div className="bg-white rounded-[2.5rem] p-10 border border-red-50 shadow-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform duration-500">
+                            <div className="absolute -right-6 -bottom-6 text-9xl opacity-5 group-hover:scale-110 transition-transform duration-500">💤</div>
+                            <p className="text-red-400 font-black uppercase tracking-[0.25em] text-sm mb-4">Offline / Idle</p>
+                            <h3 className="text-7xl font-black text-gray-900 tracking-tighter">{offlineAiCount}</h3>
+                            <button className="mt-8 text-red-500 font-black uppercase text-xs tracking-widest flex items-center gap-2 hover:gap-4 transition-all duration-300">
+                                REBOOT CLUSTER <span>→</span>
+                            </button>
                         </div>
                     </div>
 
-                    <div className="p-10">
-                        <div className="flex items-center justify-center mb-10">
-                            <div className="relative">
-                                <div className={`w-32 h-32 rounded-[2rem] bg-gradient-to-br ${statusConfig.color} flex items-center justify-center shadow-2xl rotate-3 group-hover:rotate-0 transition-all duration-500`}>
-                                    <span className="text-6xl drop-shadow-lg">{statusConfig.icon}</span>
+                    {/* AI Session Registry */}
+                    <div className="bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-gray-100">
+                        <div className="bg-gradient-to-r from-gray-900 via-indigo-950 to-purple-950 p-10">
+                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+                                <div className="flex items-center gap-8">
+                                    <div className="bg-white/10 backdrop-blur-xl rounded-[2rem] p-6 border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+                                        <span className="text-6xl drop-shadow-2xl">🧠</span>
+                                    </div>
+                                    <div>
+                                        <h2 className="text-3xl font-black text-white tracking-tight">AI Neural Registry</h2>
+                                        <p className="text-indigo-200/70 font-bold mt-1.5 uppercase text-sm tracking-[0.25em]">Scalable Multi-Account Deployment</p>
+                                    </div>
                                 </div>
-                                {displayStatus === 'ready' && (
-                                    <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-green-400 to-emerald-500 animate-ping opacity-20"></div>
+                                <div className="flex flex-col sm:flex-row gap-4 flex-1 lg:max-w-xl">
+                                    <div className="relative flex-1 group">
+                                        <input
+                                            type="text"
+                                            placeholder="Search AI Accounts..."
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            className="w-full bg-white/5 border border-white/10 rounded-2xl pl-14 pr-8 py-5 text-white placeholder:text-white/30 focus:outline-none focus:ring-4 focus:ring-indigo-500/30 transition-all duration-300 font-bold text-lg"
+                                        />
+                                        <span className="absolute left-5 top-1/2 -translate-y-1/2 text-3xl opacity-40 group-hover:scale-110 transition-transform duration-300">🔍</span>
+                                    </div>
+                                    <button className="bg-indigo-500 hover:bg-indigo-400 text-white font-black px-8 py-5 rounded-2xl transition-all duration-300 shadow-xl shadow-indigo-500/20 active:scale-95 flex items-center justify-center gap-3">
+                                        <span className="text-2xl">➕</span> ADD INSTANCE
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-12">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-8">
+                                {aiSessions.length > 0 ? aiSessions.filter(s =>
+                                    s.id.toLowerCase().includes(searchTerm.toLowerCase()) || (s.phone && s.phone.includes(searchTerm))
+                                ).map((s) => (
+                                    <div
+                                        key={s.id}
+                                        onClick={() => setSessionId(s.id)}
+                                        className={`group relative p-8 rounded-[2.5rem] border-2 transition-all duration-500 cursor-pointer overflow-hidden ${sessionId === s.id
+                                            ? 'bg-indigo-50 border-indigo-500 shadow-2xl shadow-indigo-200 scale-105'
+                                            : 'bg-white border-gray-100 hover:border-indigo-200 hover:shadow-2xl hover:shadow-indigo-50 hover:-translate-y-2'
+                                            }`}
+                                    >
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700"></div>
+
+                                        <div className="flex items-center justify-between mb-8 relative z-10">
+                                            <div className={`p-5 rounded-[1.5rem] shadow-xl ${s.status === 'open' ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                                                <span className="text-3xl">{s.status === 'open' ? '🤖' : '💤'}</span>
+                                            </div>
+                                            <div className="flex gap-1.5">
+                                                <div className={`w-2.5 h-2.5 rounded-full ${s.status === 'open' ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]' : 'bg-gray-300'}`}></div>
+                                                <div className={`w-2.5 h-2.5 rounded-full ${s.status === 'open' ? 'bg-emerald-500 animate-pulse delay-150 shadow-[0_0_8px_#10b981]' : 'bg-gray-300'}`}></div>
+                                            </div>
+                                        </div>
+
+                                        <div className="relative z-10">
+                                            <h3 className={`font-black text-2xl truncate mb-1 ${sessionId === s.id ? 'text-indigo-900' : 'text-gray-800'}`}>
+                                                {s.id.toUpperCase()}
+                                            </h3>
+                                            <p className="text-sm font-bold text-gray-500 mb-1">
+                                                {s.name || 'Cloud Identity'}
+                                            </p>
+                                            <p className="text-xs font-black text-indigo-400 uppercase tracking-widest mb-6">
+                                                {s.phone ? `+${s.phone}` : 'WAITING LINK...'}
+                                            </p>
+
+                                            <div className="flex items-center justify-between pt-6 border-t border-gray-100">
+                                                <span className={`text-[10px] font-black uppercase tracking-widest ${s.status === 'open' ? 'text-emerald-500' : 'text-gray-400'}`}>
+                                                    {s.status === 'open' ? 'Active' : 'Standby'}
+                                                </span>
+                                                <span className="text-indigo-300 font-bold text-xs uppercase group-hover:text-indigo-500 transition-colors duration-300">Manage <span>→</span></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )) : (
+                                    <div className="col-span-full py-32 text-center bg-gray-50 rounded-[3rem] border-4 border-dashed border-gray-100">
+                                        <span className="text-[10rem] mb-10 block grayscale opacity-30">🤖</span>
+                                        <h3 className="text-4xl font-black text-gray-300 tracking-tighter mb-4">No AI Instances Found</h3>
+                                        <p className="text-gray-400 font-bold text-lg max-w-sm mx-auto leading-relaxed">Your AI fleet is currently empty. Connect a new instance to begin.</p>
+                                    </div>
                                 )}
                             </div>
                         </div>
-
-                        <div className="space-y-4">
-                            {[
-                                { label: 'Auth Status', value: connectionState.status, type: 'status' },
-                                { label: 'Node Engine', value: !error ? '🟢 ACTIVE' : '🔴 OFFLINE', type: 'online' },
-                                { label: 'Registered ID', value: connectionState.phoneNumber ? `+${connectionState.phoneNumber}` : 'Unidentified', type: 'id' },
-                                { label: 'Cloud Identity', value: connectionState.user?.name || 'Guest Instance', type: 'name' }
-                            ].map((item, idx) => (
-                                <div key={idx} className="flex items-center justify-between p-5 bg-gray-50/80 hover:bg-[#dcf8c6]/30 rounded-2xl transition-colors duration-300 border border-transparent hover:border-[#25d366]/20">
-                                    <span className="text-gray-500 font-black uppercase text-xs tracking-[0.2em]">{item.label}</span>
-                                    <span className={`font-black tracking-tight ${item.type === 'status' ? (displayStatus === 'ready' ? 'text-green-600' : 'text-yellow-600') :
-                                        item.type === 'online' ? (!error ? 'text-emerald-500' : 'text-red-500') : 'text-gray-800'
-                                        }`}>
-                                        {item.value}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
                     </div>
                 </div>
-
-                {/* QR Code Card */}
-                <div className="group bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100 hover:shadow-purple-100 transition-all duration-500">
-                    <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-7">
-                        <div className="flex items-center gap-5">
-                            <div className="bg-white/20 backdrop-blur-md rounded-2xl p-4 shadow-inner">
-                                <span className="text-5xl drop-shadow-md">🔗</span>
-                            </div>
-                            <div>
-                                <h2 className="text-2xl font-black text-white tracking-tight">Device Linking</h2>
-                                <p className="text-white/90 font-bold mt-1 uppercase text-sm tracking-widest">Connect your mobile device</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="p-10 flex flex-col items-center justify-center min-h-[420px]">
-                        {loading ? (
-                            <div className="text-center animate-pulse">
-                                <div className="inline-block bg-gradient-to-br from-gray-100 to-gray-200 rounded-[2rem] p-12 mb-6 shadow-inner">
-                                    <span className="text-9xl">📡</span>
-                                </div>
-                                <p className="text-2xl font-black text-gray-800 tracking-tight">Syncing Instance...</p>
-                                <p className="text-gray-500 font-bold uppercase text-xs tracking-widest mt-2">{sessionId}</p>
-                            </div>
-                        ) : connectionState.qrImage ? (
-                            <div className="relative group/qr">
-                                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-3xl blur-2xl opacity-20 group-hover/qr:opacity-40 transition-opacity duration-500"></div>
-                                <div className="relative bg-white p-6 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-8 border-gray-50">
-                                    <img src={connectionState.qrImage} alt="QR Code" className="w-64 h-64 rounded-xl" />
-                                </div>
-                                <div className="text-center mt-8">
-                                    <p className="text-xl font-black text-gray-800 tracking-tight">Scan with WhatsApp</p>
-                                    <div className="flex items-center justify-center gap-2 mt-2">
-                                        <span className="text-xs font-black bg-purple-100 text-purple-600 px-3 py-1 rounded-full uppercase tracking-wider">Linked Devices</span>
-                                        <span className="text-gray-400">→</span>
-                                        <span className="text-xs font-black bg-indigo-100 text-indigo-600 px-3 py-1 rounded-full uppercase tracking-wider">Link a Device</span>
+            ) : (
+                <div className="space-y-8 animate-in slide-in-from-bottom-5 duration-700">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                        {/* Status Card */}
+                        <div className="group bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-gray-100 transition-all duration-500">
+                            <div className={`bg-gradient-to-r ${statusConfig.color} p-8 transition-colors duration-500`}>
+                                <div className="flex items-center gap-6">
+                                    <div className="bg-white/20 backdrop-blur-md rounded-[1.5rem] p-5 shadow-inner border border-white/20">
+                                        <span className="text-6xl drop-shadow-2xl">{statusConfig.icon}</span>
+                                    </div>
+                                    <div>
+                                        <h2 className="text-3xl font-black text-white tracking-tight">Session Intel</h2>
+                                        <p className="text-white/90 font-bold mt-1.5 uppercase text-sm tracking-[0.25em]">{statusConfig.label}</p>
                                     </div>
                                 </div>
                             </div>
-                        ) : displayStatus === 'ready' ? (
-                            <div className="text-center group-hover:scale-105 transition-transform duration-500">
-                                <div className="inline-block bg-gradient-to-br from-emerald-50 to-green-100 rounded-[2.5rem] p-12 mb-8 shadow-inner relative">
-                                    <span className="text-9xl drop-shadow-xl relative z-10">🌿</span>
-                                    <div className="absolute inset-0 rounded-[2.5rem] bg-green-200/50 scale-90 blur-xl"></div>
+                            <div className="p-10">
+                                <div className="space-y-5">
+                                    {[
+                                        { label: 'Auth Status', value: connectionState.status, type: 'status' },
+                                        { label: 'Cloud Identity', value: connectionState.user?.name || 'Guest Instance', type: 'name' },
+                                        { label: 'Registered ID', value: connectionState.phoneNumber ? `+${connectionState.phoneNumber}` : 'Unidentified', type: 'id' }
+                                    ].map((item: any, idx) => (
+                                        <div key={idx} className="flex items-center justify-between p-6 bg-gray-50/80 rounded-[2rem] border border-transparent hover:border-emerald-100 hover:bg-emerald-50/30 transition-all duration-300">
+                                            <span className="text-gray-500 font-black uppercase text-xs tracking-[0.25em]">{item.label}</span>
+                                            <span className={`font-black text-lg ${item.type === 'status' && displayStatus === 'ready' ? 'text-emerald-600' : 'text-gray-800'}`}>
+                                                {item.value}
+                                            </span>
+                                        </div>
+                                    ))}
                                 </div>
-                                <p className="text-4xl font-black text-[#075e54] tracking-tight">Identity Verified</p>
-                                <p className="text-gray-500 font-bold mt-3 max-w-[280px] mx-auto leading-relaxed">Instance <span className="text-[#25d366]">{sessionId}</span> is actively processing requests</p>
-                            </div>
-                        ) : (
-                            <div className="text-center">
-                                <div className="inline-block bg-gradient-to-br from-gray-50 to-gray-100 rounded-[2rem] p-12 mb-6 border-4 border-dashed border-gray-200">
-                                    <span className="text-8xl opacity-50">💤</span>
-                                </div>
-                                <p className="text-2xl font-black text-gray-400 tracking-tight uppercase tracking-[0.2em]">Hibernating</p>
-                                <p className="text-gray-400 font-bold text-sm mt-3">Waiting for terminal signals...</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* Manual Response Card */}
-            {displayStatus === 'ready' && (
-                <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100 mt-12">
-                    <div className="bg-gradient-to-r from-[#075e54] to-[#128c7e] p-8">
-                        <div className="flex items-center gap-6">
-                            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20 shadow-inner">
-                                <span className="text-5xl">⚡</span>
-                            </div>
-                            <div>
-                                <h2 className="text-2xl font-black text-white tracking-tight">Direct Terminal</h2>
-                                <p className="text-white/80 font-bold mt-1 uppercase text-sm tracking-widest">Send prioritized manual response</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <form onSubmit={handleSendMessage} className="p-12 space-y-8">
-                        {sendResult && (
-                            <div className={`p-6 rounded-3xl flex items-center gap-5 animate-slide-up ${sendResult.success ? 'bg-emerald-50 border-2 border-emerald-200 shadow-lg shadow-emerald-50' : 'bg-red-50 border-2 border-red-200'
-                                }`}>
-                                <div className={`text-3xl p-3 rounded-2xl ${sendResult.success ? 'bg-emerald-100' : 'bg-red-100'}`}>
-                                    {sendResult.success ? '✨' : '💥'}
-                                </div>
-                                <div>
-                                    <p className={`font-black text-xl tracking-tight ${sendResult.success ? 'text-emerald-900' : 'text-red-900'}`}>
-                                        {sendResult.success ? 'Transmission Success!' : 'System Failure!'}
-                                    </p>
-                                    <p className={`font-bold ${sendResult.success ? 'text-emerald-600' : 'text-red-600'}`}>{sendResult.message}</p>
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                            <div className="space-y-4">
-                                <label className="flex items-center gap-3 text-xs font-black text-gray-500 uppercase tracking-[0.2em] ml-2">
-                                    <span className="w-1.5 h-1.5 bg-[#25d366] rounded-full"></span> Destination JID
-                                </label>
-                                <input
-                                    type="text"
-                                    name="phone"
-                                    value={sendForm.phone}
-                                    onChange={handleFormChange}
-                                    placeholder="e.g. 628123456789"
-                                    className="w-full px-6 py-5 bg-gray-50 border-2 border-gray-100 rounded-3xl focus:ring-[10px] focus:ring-[#25d366]/10 focus:border-[#25d366] transition-all duration-300 outline-none font-black text-xl placeholder:text-gray-300"
-                                    required
-                                    disabled={sending}
-                                />
-                                <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest ml-4">International format required (Omit '+')</p>
-                            </div>
-
-                            <div className="space-y-4">
-                                <label className="flex items-center gap-3 text-xs font-black text-gray-500 uppercase tracking-[0.2em] ml-2">
-                                    <span className="w-1.5 h-1.5 bg-[#128c7e] rounded-full"></span> Data Payload
-                                </label>
-                                <textarea
-                                    name="message"
-                                    value={sendForm.message}
-                                    onChange={handleFormChange}
-                                    placeholder="Type your message broadcast here..."
-                                    rows={3}
-                                    className="w-full px-6 py-5 bg-gray-50 border-2 border-gray-100 rounded-3xl focus:ring-[10px] focus:ring-[#128c7e]/10 focus:border-[#128c7e] transition-all duration-300 outline-none font-bold text-lg placeholder:text-gray-300 resize-none"
-                                    required
-                                    disabled={sending}
-                                />
                             </div>
                         </div>
 
-                        <button
-                            type="submit"
-                            disabled={sending}
-                            className={`w-full py-6 rounded-3xl font-black text-white text-xl tracking-widest transition-all duration-500 transform group relative overflow-hidden shadow-2xl ${sending ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#25d366] hover:bg-[#075e54] hover:-translate-y-1 active:scale-95'
-                                }`}
-                        >
-                            <span className="relative z-10 flex items-center justify-center gap-4">
-                                {sending ? (
-                                    <>
-                                        <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
-                                        TRANSMITTING...
-                                    </>
+                        {/* QR Code Card */}
+                        <div className={`group bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-gray-100 transition-all duration-500 ${sessionId === 'wa-bot-ai' ? 'opacity-50 grayscale pointer-events-none' : ''}`}>
+                            <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-8">
+                                <div className="flex items-center gap-6">
+                                    <div className="bg-white/20 backdrop-blur-md rounded-[1.5rem] p-5 shadow-inner border border-white/20">
+                                        <span className="text-6xl drop-shadow-2xl">🔗</span>
+                                    </div>
+                                    <div>
+                                        <h2 className="text-3xl font-black text-white tracking-tight">Device Linking</h2>
+                                        <p className="text-white/90 font-bold mt-1.5 uppercase text-sm tracking-[0.25em]">Connect Mobile Portal</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="p-10 flex flex-col items-center justify-center min-h-[400px]">
+                                {loading ? (
+                                    <div className="animate-pulse text-center">
+                                        <div className="w-24 h-24 bg-gray-100 rounded-full mb-4 mx-auto"></div>
+                                        <p className="font-black text-gray-400">Syncing...</p>
+                                    </div>
+                                ) : connectionState.qrImage ? (
+                                    <div className="relative p-8 bg-white rounded-[3.5rem] shadow-3xl border-8 border-gray-50">
+                                        <img src={connectionState.qrImage} alt="QR Code" className="w-64 h-64 rounded-xl" />
+                                    </div>
+                                ) : displayStatus === 'ready' ? (
+                                    <div className="text-center">
+                                        <span className="text-[10rem] mb-6 block">🌿</span>
+                                        <h3 className="text-4xl font-black text-emerald-900 tracking-tighter">Verified</h3>
+                                    </div>
                                 ) : (
-                                    <>
-                                        <span className="text-3xl">🚀</span>
-                                        EXECUTE BROADCAST
-                                    </>
+                                    <div className="text-center opacity-30">
+                                        <span className="text-[8rem] block">💤</span>
+                                        <p className="font-black uppercase tracking-widest text-gray-400">Hibernating</p>
+                                    </div>
                                 )}
-                            </span>
-                            <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-                        </button>
-                    </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Manual Response Card */}
+                    {displayStatus === 'ready' && sessionId !== 'wa-bot-ai' && (
+                        <div className="bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-gray-100 mt-12 animate-in slide-in-from-bottom-5">
+                            <div className="bg-gradient-to-r from-[#075e54] to-[#128c7e] p-10">
+                                <div className="flex items-center gap-8">
+                                    <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
+                                        <span className="text-6xl">⚡</span>
+                                    </div>
+                                    <div>
+                                        <h2 className="text-3xl font-black text-white tracking-tight">Direct Terminal</h2>
+                                        <p className="text-white/80 font-bold mt-1.5 uppercase text-sm tracking-widest">Send prioritized manual response</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <form onSubmit={handleSendMessage} className="p-12 space-y-10">
+                                {sendResult && (
+                                    <div className={`p-8 rounded-[2.5rem] flex items-center gap-6 animate-slide-up ${sendResult.success ? 'bg-emerald-50 border-2 border-emerald-200' : 'bg-red-50 border-2 border-red-200'}`}>
+                                        <div className="text-4xl">{sendResult.success ? '✨' : '💥'}</div>
+                                        <p className="font-black text-xl">{sendResult.message}</p>
+                                    </div>
+                                )}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                                    <div className="space-y-4">
+                                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-4">Destination JID</label>
+                                        <input
+                                            type="text"
+                                            name="phone"
+                                            value={sendForm.phone}
+                                            onChange={handleFormChange}
+                                            placeholder="62812345678"
+                                            className="w-full px-8 py-6 bg-gray-50 border-2 border-gray-100 rounded-[2rem] focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none font-black text-2xl transition-all"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-4">
+                                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-4">Data Payload</label>
+                                        <textarea
+                                            name="message"
+                                            value={sendForm.message}
+                                            onChange={handleFormChange}
+                                            placeholder="Type message..."
+                                            rows={2}
+                                            className="w-full px-8 py-6 bg-gray-50 border-2 border-gray-100 rounded-[2rem] focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none font-bold text-xl transition-all resize-none"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <button
+                                    type="submit"
+                                    disabled={sending}
+                                    className="w-full py-8 bg-[#25d366] hover:bg-[#075e54] text-white rounded-[2.5rem] font-black text-2xl tracking-widest transition-all shadow-2xl active:scale-95 disabled:opacity-50"
+                                >
+                                    {sending ? 'TRANSMITTING...' : 'EXECUTE RESPONSE 🚀'}
+                                </button>
+                            </form>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
