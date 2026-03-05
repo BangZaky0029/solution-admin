@@ -38,6 +38,12 @@ const WhatsAppConnector: FC = () => {
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
+    // Pairing Mode State
+    const [linkMode, setLinkMode] = useState<'qr' | 'phone'>('qr');
+    const [pairingPhone, setPairingPhone] = useState<string>('');
+    const [pairingCode, setPairingCode] = useState<string | null>(null);
+    const [requestingCode, setRequestingCode] = useState<boolean>(false);
+
     // Session Registry state
     const [allSessions, setAllSessions] = useState<any[]>([]);
     const [searchTerm, setSearchTerm] = useState<string>('');
@@ -63,6 +69,19 @@ const WhatsAppConnector: FC = () => {
             }
         } catch (err) {
             console.error('Error fetching all sessions:', err);
+        }
+    }, []);
+
+    const fetchPairingCode = useCallback(async (sid: string) => {
+        try {
+            const response = await fetch(`${WA_API_BASE}/api/whatsapp/${sid}/pairing-code`);
+            const data = await response.json();
+
+            if (data.success && data.pairingCode) {
+                setPairingCode(data.pairingCode);
+            }
+        } catch (err) {
+            console.error('Error fetching pairing code:', err);
         }
     }, []);
 
@@ -100,6 +119,12 @@ const WhatsAppConnector: FC = () => {
 
                 if (data.hasQR) {
                     await fetchQRCode(sid);
+                    // Also check for pairing code if in phone mode
+                    if (linkMode === 'phone') {
+                        await fetchPairingCode(sid);
+                    }
+                } else {
+                    setPairingCode(null);
                 }
             }
             setError(null);
@@ -118,7 +143,32 @@ const WhatsAppConnector: FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [fetchQRCode, fetchAllSessions]);
+    }, [fetchQRCode, fetchPairingCode, fetchAllSessions, linkMode]);
+
+    const handleInitWithPhone = async () => {
+        if (!pairingPhone) return alert('Please enter phone number');
+
+        setRequestingCode(true);
+        setPairingCode(null);
+        try {
+            const response = await fetch(`${WA_API_BASE}/api/whatsapp/${sessionId}/init`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phoneNumber: pairingPhone })
+            });
+            const data = await response.json();
+            if (data.success) {
+                setLinkMode('phone');
+                // Status polling will take care of fetching the code
+            } else {
+                alert(data.error || 'Failed to initialize session');
+            }
+        } catch (err) {
+            console.error('Init failure:', err);
+        } finally {
+            setRequestingCode(false);
+        }
+    };
 
     /**
      * Send message via WhatsApp Gateway
@@ -219,7 +269,7 @@ const WhatsAppConnector: FC = () => {
         setLoading(true);
         fetchStatus(sessionId);
         fetchAllSessions(); // Fetch all sessions on initial load and session change
-        const interval = setInterval(() => fetchStatus(sessionId), 10000);
+        const interval = setInterval(() => fetchStatus(sessionId), 4000);
         return () => clearInterval(interval);
     }, [sessionId, fetchStatus, fetchAllSessions]);
 
@@ -526,38 +576,122 @@ const WhatsAppConnector: FC = () => {
                             </div>
                         </div>
 
-                        {/* QR Code Card */}
+                        {/* QR Code & Pairing Card */}
                         <div className={`group bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-gray-100 transition-all duration-500 ${sessionId === 'wa-bot-ai' ? 'opacity-50 grayscale pointer-events-none' : ''}`}>
                             <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-8">
-                                <div className="flex items-center gap-6">
-                                    <div className="bg-white/20 backdrop-blur-md rounded-[1.5rem] p-5 shadow-inner border border-white/20">
-                                        <span className="text-6xl drop-shadow-2xl">🔗</span>
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                                    <div className="flex items-center gap-6">
+                                        <div className="bg-white/20 backdrop-blur-md rounded-[1.5rem] p-5 shadow-inner border border-white/20">
+                                            <span className="text-6xl drop-shadow-2xl">🔗</span>
+                                        </div>
+                                        <div>
+                                            <h2 className="text-3xl font-black text-white tracking-tight">Device Linking</h2>
+                                            <p className="text-white/90 font-bold mt-1.5 uppercase text-sm tracking-[0.25em]">Connect Mobile Portal</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h2 className="text-3xl font-black text-white tracking-tight">Device Linking</h2>
-                                        <p className="text-white/90 font-bold mt-1.5 uppercase text-sm tracking-[0.25em]">Connect Mobile Portal</p>
+
+                                    {/* Link Mode Toggle */}
+                                    <div className="bg-black/20 backdrop-blur-xl p-2 rounded-[2rem] flex gap-2 border border-white/10 self-start">
+                                        <button
+                                            onClick={() => setLinkMode('qr')}
+                                            className={`px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-all duration-300 ${linkMode === 'qr' ? 'bg-white text-indigo-600 shadow-xl' : 'text-white/60 hover:text-white'}`}
+                                        >
+                                            QR CODE
+                                        </button>
+                                        <button
+                                            onClick={() => setLinkMode('phone')}
+                                            className={`px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-all duration-300 ${linkMode === 'phone' ? 'bg-white text-purple-600 shadow-xl' : 'text-white/60 hover:text-white'}`}
+                                        >
+                                            PHONE NUMBER
+                                        </button>
                                     </div>
                                 </div>
                             </div>
-                            <div className="p-10 flex flex-col items-center justify-center min-h-[400px]">
+
+                            <div className="p-10 flex flex-col items-center justify-center min-h-[420px]">
                                 {loading ? (
                                     <div className="animate-pulse text-center">
                                         <div className="w-24 h-24 bg-gray-100 rounded-full mb-4 mx-auto"></div>
                                         <p className="font-black text-gray-400">Syncing...</p>
                                     </div>
-                                ) : connectionState.qrImage ? (
-                                    <div className="relative p-8 bg-white rounded-[3.5rem] shadow-3xl border-8 border-gray-50">
-                                        <img src={connectionState.qrImage} alt="QR Code" className="w-64 h-64 rounded-xl" />
-                                    </div>
                                 ) : displayStatus === 'ready' ? (
-                                    <div className="text-center">
-                                        <span className="text-[10rem] mb-6 block">🌿</span>
-                                        <h3 className="text-4xl font-black text-emerald-900 tracking-tighter">Verified</h3>
+                                    <div className="text-center animate-bounce-in">
+                                        <span className="text-[10rem] mb-6 block drop-shadow-2xl transition-transform hover:scale-110 duration-500 cursor-pointer">🌿</span>
+                                        <h3 className="text-5xl font-black text-emerald-900 tracking-tighter mb-2">Verified</h3>
+                                        <p className="text-emerald-600 font-bold uppercase tracking-[0.3em] text-xs">READY FOR TRANSMISSION</p>
                                     </div>
+                                ) : linkMode === 'qr' ? (
+                                    <>
+                                        {connectionState.qrImage ? (
+                                            <div className="relative p-10 bg-white rounded-[4rem] shadow-[-20px_20px_60px_#bebebe,20px_-20px_60px_#ffffff] border-[12px] border-gray-50 transform hover:scale-105 transition-transform duration-500 group">
+                                                <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-[3rem]"></div>
+                                                <img src={connectionState.qrImage} alt="QR Code" className="w-64 h-64 rounded-2xl relative z-10" />
+                                                <div className="mt-8 text-center relative z-10">
+                                                    <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.4em] mb-1">SCAN VIA WHATSAPP</p>
+                                                    <p className="text-gray-400 text-xs font-bold">Expires in 20 seconds</p>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center group">
+                                                <div className="w-48 h-48 bg-gray-50 rounded-[3rem] flex items-center justify-center mb-10 mx-auto group-hover:bg-gray-100 transition-colors duration-500 shadow-inner">
+                                                    <span className="text-[6rem] opacity-20 filter grayscale group-hover:grayscale-0 group-hover:opacity-40 transition-all duration-700">📶</span>
+                                                </div>
+                                                <p className="font-black uppercase tracking-[0.3em] text-gray-300 group-hover:text-gray-400 transition-colors">Awaiting Signal...</p>
+                                            </div>
+                                        )}
+                                    </>
                                 ) : (
-                                    <div className="text-center opacity-30">
-                                        <span className="text-[8rem] block">💤</span>
-                                        <p className="font-black uppercase tracking-widest text-gray-400">Hibernating</p>
+                                    <div className="w-full max-w-sm space-y-8 animate-fade-in">
+                                        {pairingCode ? (
+                                            <div className="text-center space-y-8">
+                                                <div className="bg-purple-50 rounded-[2.5rem] p-10 border-4 border-dashed border-purple-200">
+                                                    <p className="text-xs font-black text-purple-400 uppercase tracking-[0.4em] mb-6">YOUR PAIRING CODE</p>
+                                                    <div className="flex items-center justify-center gap-3">
+                                                        {pairingCode.split('').map((char, i) => (
+                                                            <div key={i} className={`w-12 h-16 flex items-center justify-center bg-white rounded-2xl shadow-xl text-3xl font-black ${char === '-' ? 'bg-transparent shadow-none text-purple-300 w-6' : 'text-purple-600 border border-purple-100'}`}>
+                                                                {char}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                <p className="text-gray-500 font-bold text-sm leading-relaxed px-4">
+                                                    Input this code on your phone:<br />
+                                                    <span className="text-gray-400 font-medium">WhatsApp Account &rarr; Linked Devices &rarr; Link with phone number instead</span>
+                                                </p>
+                                                <button
+                                                    onClick={() => { setPairingCode(null); setLinkMode('qr'); }}
+                                                    className="text-purple-500 font-black uppercase text-[10px] tracking-[0.3em] hover:text-purple-700 transition-colors"
+                                                >
+                                                    &larr; BACK TO QR MODE
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-6">
+                                                <div className="space-y-3">
+                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] ml-4">WhatsApp Number</label>
+                                                    <div className="relative group">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="62812345678"
+                                                            value={pairingPhone}
+                                                            onChange={(e) => setPairingPhone(e.target.value)}
+                                                            className="w-full bg-gray-50 border-2 border-gray-100 rounded-[2rem] px-8 py-5 text-xl font-black focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 outline-none transition-all placeholder:text-gray-300"
+                                                        />
+                                                        <span className="absolute right-6 top-1/2 -translate-y-1/2 text-2xl group-hover:scale-110 transition-transform">📱</span>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={handleInitWithPhone}
+                                                    disabled={requestingCode || !pairingPhone}
+                                                    className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black py-5 rounded-[2rem] shadow-[0_20px_50px_-15px_rgba(79,70,229,0.5)] active:scale-95 transition-all disabled:opacity-50 disabled:grayscale tracking-[0.2em] text-sm"
+                                                >
+                                                    {requestingCode ? 'GENERATING...' : 'GET PAIRING CODE &rarr;'}
+                                                </button>
+                                                <p className="text-center text-[10px] text-gray-400 font-bold tracking-widest italic opacity-60">
+                                                    Code will be valid for 2 minutes
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
