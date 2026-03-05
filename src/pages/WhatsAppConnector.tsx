@@ -74,7 +74,9 @@ const WhatsAppConnector: FC = () => {
 
     const fetchPairingCode = useCallback(async (sid: string) => {
         try {
-            const response = await fetch(`${WA_API_BASE}/api/whatsapp/${sid}/pairing-code`);
+            const response = await fetch(`${WA_API_BASE}/api/whatsapp/${sid}/pairing-code`, {
+                headers: { 'X-Session-Id': sid }
+            });
             const data = await response.json();
 
             if (data.success && data.pairingCode) {
@@ -87,7 +89,9 @@ const WhatsAppConnector: FC = () => {
 
     const fetchQRCode = useCallback(async (sid: string) => {
         try {
-            const response = await fetch(`${WA_API_BASE}/api/whatsapp/${sid}/qr`);
+            const response = await fetch(`${WA_API_BASE}/api/whatsapp/${sid}/qr`, {
+                headers: { 'X-Session-Id': sid }
+            });
             const data = await response.json();
 
             if (data.success && data.qrImage) {
@@ -104,7 +108,9 @@ const WhatsAppConnector: FC = () => {
 
     const fetchStatus = useCallback(async (sid: string) => {
         try {
-            const response = await fetch(`${WA_API_BASE}/api/whatsapp/${sid}/status`);
+            const response = await fetch(`${WA_API_BASE}/api/whatsapp/${sid}/status`, {
+                headers: { 'X-Session-Id': sid }
+            });
             const data = await response.json();
 
             if (data.success !== false) {
@@ -153,7 +159,10 @@ const WhatsAppConnector: FC = () => {
         try {
             const response = await fetch(`${WA_API_BASE}/api/whatsapp/${sessionId}/init`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Session-Id': sessionId
+                },
                 body: JSON.stringify({ phoneNumber: pairingPhone })
             });
             const data = await response.json();
@@ -183,6 +192,7 @@ const WhatsAppConnector: FC = () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-Session-Id': sessionId
                 },
                 body: JSON.stringify({
                     number: sendForm.phone,
@@ -229,6 +239,7 @@ const WhatsAppConnector: FC = () => {
         try {
             const response = await fetch(`${WA_API_BASE}/api/whatsapp/${sessionId}/logout`, {
                 method: 'POST',
+                headers: { 'X-Session-Id': sessionId }
             });
 
             const data = await response.json();
