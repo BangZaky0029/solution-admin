@@ -9,6 +9,7 @@ import Payments from './pages/Payments';
 import Packages from './pages/Packages';
 import PackageEditor from './pages/PackageEditor';
 import Users from './pages/Users';
+import Finance from './pages/Finance';
 import WhatsAppConnector from './pages/WhatsAppConnector';
 import AdminLayout from './layouts/AdminLayout';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -33,6 +34,7 @@ const App: FC = () => {
                                 <Route path="/packages/create" element={<PackageEditor />} />
                                 <Route path="/packages/edit/:id" element={<PackageEditor />} />
                                 <Route path="/users" element={<Users />} />
+                                <Route path="/finance" element={<Finance />} />
                                 <Route path="/whatsapp" element={<WhatsAppConnector />} />
                             </Route>
                         </Route>

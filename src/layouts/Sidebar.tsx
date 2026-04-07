@@ -14,6 +14,7 @@ const Sidebar: FC = () => {
         { path: '/payments', label: 'Payments', icon: '💳', gradient: 'from-amber-500 to-orange-600' },
         { path: '/packages', label: 'Packages', icon: '📦', gradient: 'from-green-500 to-emerald-600' },
         { path: '/users', label: 'Users', icon: '👥', gradient: 'from-purple-500 to-purple-600' },
+        { path: '/finance', label: 'Finance', icon: '💰', gradient: 'from-emerald-500 to-teal-600' },
         { path: '/whatsapp', label: 'WhatsApp Bot', icon: '💬', gradient: 'from-green-400 to-emerald-500' },
     ];
 

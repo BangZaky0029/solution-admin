@@ -8,6 +8,24 @@ interface UsersData {
     success: boolean;
 }
 
+// Sub-component for Search Highlighting (Stabilo effect)
+const HighlightText: FC<{ text: string, highlight: string }> = ({ text, highlight }) => {
+    if (!highlight.trim()) return <span>{text}</span>;
+    
+    const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
+    return (
+        <span>
+            {parts.map((part, i) => (
+                part.toLowerCase() === highlight.toLowerCase() ? (
+                    <mark key={i} className="bg-yellow-200 text-yellow-900 rounded-[2px] px-0.5">{part}</mark>
+                ) : (
+                    <span key={i}>{part}</span>
+                )
+            ))}
+        </span>
+    );
+};
+
 const Users: FC = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
@@ -16,6 +34,10 @@ const Users: FC = () => {
     const [loading, setLoading] = useState<boolean>(true);
     const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
+    
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState<number>(1);
+    const itemsPerPage = 10;
 
     useEffect(() => {
         loadUsers();
@@ -56,14 +78,22 @@ const Users: FC = () => {
         if (search) {
             const searchLower = search.toLowerCase();
             result = result.filter(u =>
-                u.name.toLowerCase().includes(searchLower) ||
+                u.name.toLowerCase().startsWith(searchLower) ||
                 u.email.toLowerCase().includes(searchLower) ||
                 u.phone.includes(search)
             );
         }
 
         setFilteredUsers(result);
+        setCurrentPage(1); // Reset to first page when search/filter changes
     };
+
+    // Calculate Pagination
+    const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+    const paginatedUsers = filteredUsers.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
 
     const handleSearchChange = (e: ChangeEvent<HTMLInputElement>): void => {
         setSearch(e.target.value);
@@ -117,6 +147,68 @@ const Users: FC = () => {
     };
 
     const stats = getStats();
+
+    const PaginationControls = () => (
+        <div className="p-6 bg-white border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="text-sm font-medium text-gray-500">
+                Found <span className="text-purple-600 font-bold">{filteredUsers.length}</span> users 
+                {filteredUsers.length > 0 && ` (Showing ${Math.min(filteredUsers.length, (currentPage - 1) * itemsPerPage + 1)}-${Math.min(filteredUsers.length, currentPage * itemsPerPage)})`}
+            </div>
+            
+            {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="px-4 py-2 rounded-xl bg-gray-100 text-gray-600 font-bold hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    >
+                        ← Prev
+                    </button>
+                    
+                    <div className="flex items-center gap-1">
+                        {[...Array(totalPages)].map((_, i) => {
+                            const pageNum = i + 1;
+                            // Logic to show a few numbers around current page
+                            if (
+                                totalPages <= 7 ||
+                                pageNum === 1 || 
+                                pageNum === totalPages ||
+                                (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+                            ) {
+                                return (
+                                    <button
+                                        key={pageNum}
+                                        onClick={() => setCurrentPage(pageNum)}
+                                        className={`w-10 h-10 rounded-xl font-bold transition-all ${
+                                            currentPage === pageNum
+                                                ? 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-lg'
+                                                : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                        }`}
+                                    >
+                                        {pageNum}
+                                    </button>
+                                );
+                            } else if (
+                                pageNum === currentPage - 2 || 
+                                pageNum === currentPage + 2
+                            ) {
+                                return <span key={pageNum} className="text-gray-400 font-black">...</span>;
+                            }
+                            return null;
+                        })}
+                    </div>
+
+                    <button
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                        className="px-4 py-2 rounded-xl bg-gray-100 text-gray-600 font-bold hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    >
+                        Next →
+                    </button>
+                </div>
+            )}
+        </div>
+    );
 
     if (loading) {
         return (
@@ -224,7 +316,7 @@ const Users: FC = () => {
 
             {/* Users List (Responsive: Cards on Mobile, Table on Desktop) */}
             <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
-                {filteredUsers.length === 0 ? (
+                {paginatedUsers.length === 0 ? (
                     <div className="text-center py-20">
                         <div className="inline-block bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl p-8 mb-6">
                             <span className="text-8xl">🔍</span>
@@ -238,7 +330,7 @@ const Users: FC = () => {
                     <>
                         {/* Mobile Card View */}
                         <div className="md:hidden space-y-4 p-4">
-                            {filteredUsers.map((user, index) => {
+                            {paginatedUsers.map((user, index) => {
                                 const isExpired = user.expired_at && new Date(user.expired_at) < new Date();
                                 return (
                                     <div
@@ -251,7 +343,9 @@ const Users: FC = () => {
                                                 {user.name?.charAt(0).toUpperCase() || 'U'}
                                             </div>
                                             <div>
-                                                <p className="font-bold text-gray-900 text-lg">{user.name}</p>
+                                                <p className="font-bold text-gray-900 text-lg">
+                                                    <HighlightText text={user.name} highlight={search} />
+                                                </p>
                                                 <p className="text-xs text-gray-500">ID: {user.id}</p>
                                             </div>
                                         </div>
@@ -278,10 +372,10 @@ const Users: FC = () => {
 
                                         <div className="space-y-2 pt-3 border-t border-gray-200">
                                             <p className="text-sm text-gray-700 flex items-center gap-2">
-                                                <span>📧</span> {user.email}
+                                                <span>📧</span> <HighlightText text={user.email} highlight={search} />
                                             </p>
                                             <p className="text-sm text-gray-700 flex items-center gap-2">
-                                                <span>📱</span> {user.phone}
+                                                <span>📱</span> <HighlightText text={user.phone} highlight={search} />
                                             </p>
                                             <div className="pt-2 flex justify-between items-center">
                                                 {user.expired_at ? (
@@ -334,7 +428,7 @@ const Users: FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
-                                    {filteredUsers.map((user, index) => {
+                                    {paginatedUsers.map((user, index) => {
                                         const isExpired = user.expired_at && new Date(user.expired_at) < new Date();
                                         return (
                                             <tr
@@ -348,17 +442,19 @@ const Users: FC = () => {
                                                             {user.name?.charAt(0).toUpperCase() || 'U'}
                                                         </div>
                                                         <div>
-                                                            <p className="font-bold text-gray-900">{user.name}</p>
+                                                            <p className="font-bold text-gray-900">
+                                                                <HighlightText text={user.name} highlight={search} />
+                                                            </p>
                                                             <p className="text-sm text-gray-500">ID: {user.id}</p>
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-5">
                                                     <p className="text-gray-800 font-medium flex items-center gap-2">
-                                                        <span>📧</span> {user.email}
+                                                        <span>📧</span> <HighlightText text={user.email} highlight={search} />
                                                     </p>
                                                     <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
-                                                        <span>📱</span> {user.phone}
+                                                        <span>📱</span> <HighlightText text={user.phone} highlight={search} />
                                                     </p>
                                                 </td>
                                                 <td className="px-6 py-5">
@@ -412,6 +508,7 @@ const Users: FC = () => {
                                 </tbody>
                             </table>
                         </div>
+                        <PaginationControls />
                     </>
                 )}
             </div>
