@@ -1,6 +1,7 @@
 import { FC, useEffect, useState, ChangeEvent } from 'react';
 import { getUsers } from '../api/controllers/userController';
 import type { User } from '../types';
+import UserDetailModal from '../components/UserDetailModal';
 
 interface UsersData {
     data: User[];
@@ -13,6 +14,8 @@ const Users: FC = () => {
     const [search, setSearch] = useState<string>('');
     const [filter, setFilter] = useState<string>('all');
     const [loading, setLoading] = useState<boolean>(true);
+    const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
 
     useEffect(() => {
         loadUsers();
@@ -80,6 +83,39 @@ const Users: FC = () => {
         };
     };
 
+    const handleViewDetail = (id: number) => {
+        setSelectedUserId(id);
+        setIsDetailModalOpen(true);
+    };
+
+    const handleExportCsv = () => {
+        const headers = ["ID", "Name", "Email", "Phone", "Verified", "Active", "Package", "Expires", "Last Login", "Login Count"];
+        const rows = filteredUsers.map(user => [
+            user.id,
+            `"${user.name}"`,
+            user.email,
+            `'${user.phone}'`, // prevent spreadsheet auto-format
+            user.is_verified ? 'Yes' : 'No',
+            user.is_active ? 'Yes' : 'No',
+            `"${user.package_name || 'No Package'}"`,
+            user.expired_at ? new Date(user.expired_at).toLocaleDateString('id-ID') : '',
+            user.last_login_at ? new Date(user.last_login_at).toLocaleString('id-ID') : '',
+            user.login_count || 0
+        ]);
+        
+        const csvContent = "data:text/csv;charset=utf-8," 
+            + headers.join(",") + "\n"
+            + rows.map(e => e.join(",")).join("\n");
+            
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `Users_Export_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     const stats = getStats();
 
     if (loading) {
@@ -120,6 +156,13 @@ const Users: FC = () => {
                         </div>
                     </div>
                 </div>
+                
+                <button
+                    onClick={handleExportCsv}
+                    className="absolute bottom-6 right-8 z-10 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg flex items-center gap-2"
+                >
+                    <span>📊</span> Export CSV
+                </button>
             </div>
 
             {/* Stats Grid */}
@@ -240,7 +283,7 @@ const Users: FC = () => {
                                             <p className="text-sm text-gray-700 flex items-center gap-2">
                                                 <span>📱</span> {user.phone}
                                             </p>
-                                            <div className="pt-2">
+                                            <div className="pt-2 flex justify-between items-center">
                                                 {user.expired_at ? (
                                                     <div className={`flex items-center gap-2 text-sm font-medium ${isExpired ? 'text-red-600' : 'text-green-600'}`}>
                                                         <span>{isExpired ? '⏰ Expired:' : '📅 Expires:'}</span>
@@ -251,6 +294,13 @@ const Users: FC = () => {
                                                 ) : (
                                                     <span className="text-gray-400 text-sm italic">- No expiration date -</span>
                                                 )}
+                                                
+                                                <button 
+                                                    onClick={() => handleViewDetail(user.id)}
+                                                    className="bg-purple-100 hover:bg-purple-200 text-purple-700 px-4 py-2 rounded-lg text-sm font-bold transition-colors"
+                                                >
+                                                    View Detail
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -277,6 +327,9 @@ const Users: FC = () => {
                                         </th>
                                         <th className="px-6 py-5 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
                                             Expires
+                                        </th>
+                                        <th className="px-6 py-5 text-right text-xs font-black text-gray-700 uppercase tracking-wider">
+                                            Action
                                         </th>
                                     </tr>
                                 </thead>
@@ -345,6 +398,14 @@ const Users: FC = () => {
                                                         <span className="text-gray-400">-</span>
                                                     )}
                                                 </td>
+                                                <td className="px-6 py-5 text-right">
+                                                    <button 
+                                                        onClick={() => handleViewDetail(user.id)}
+                                                        className="bg-gray-100 hover:bg-purple-100 text-gray-700 hover:text-purple-700 font-bold px-4 py-2 rounded-xl transition-colors inline-block"
+                                                    >
+                                                        Details
+                                                    </button>
+                                                </td>
                                             </tr>
                                         );
                                     })}
@@ -354,6 +415,15 @@ const Users: FC = () => {
                     </>
                 )}
             </div>
+
+            {/* Modal */}
+            {selectedUserId && (
+                <UserDetailModal 
+                    userId={selectedUserId} 
+                    isOpen={isDetailModalOpen} 
+                    onClose={() => setIsDetailModalOpen(false)} 
+                />
+            )}
         </div>
     );
 };

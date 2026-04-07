@@ -1,14 +1,14 @@
 import api from '../api';
-import type { User } from '../../types';
+import type { User, UserDetail } from '../../types';
 
 interface UsersResponse {
     success: boolean;
     data: User[];
 }
 
-interface UserResponse {
+interface UserDetailResponse {
     success: boolean;
-    data: User;
+    data: UserDetail;
 }
 
 export const getUsers = async (): Promise<UsersResponse> => {
@@ -16,7 +16,7 @@ export const getUsers = async (): Promise<UsersResponse> => {
     return response.data;
 };
 
-export const getUserById = async (id: number): Promise<User> => {
-    const response = await api.get<UserResponse>(`/users/${id}`);
+export const getUserById = async (id: number): Promise<UserDetail> => {
+    const response = await api.get<UserDetailResponse>(`/users/${id}`);
     return response.data.data;
 };

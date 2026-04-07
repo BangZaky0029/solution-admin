@@ -11,6 +11,21 @@ export interface User {
     package_name?: string;
     expired_at?: string;
     created_at: string;
+    last_login_at?: string;
+    login_count?: number;
+}
+
+export interface UserToken {
+    id: number;
+    package_name: string;
+    activated_at: string;
+    expired_at: string;
+    is_active: boolean;
+}
+
+export interface UserDetail extends User {
+    tokens: UserToken[];
+    payments: Payment[];
 }
 
 // ============================================
@@ -44,6 +59,7 @@ export interface Payment {
     payment_id: string;
     email: string;
     phone: string;
+    amount?: number;
     proof_image?: string;
     package_name?: string;
     status: 'pending' | 'confirmed' | 'rejected';
