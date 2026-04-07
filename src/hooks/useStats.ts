@@ -1,6 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '../lib/queryClient';
-import { getStats, getRecentActivities } from '../api/controllers/statsController';
+import { 
+    getStats, 
+    getRecentActivities,
+    getUserGrowth,
+    getPaymentMethods,
+    getPackagePopularity
+} from '../api/controllers/statsController';
 import type { Stats, Activity } from '../types';
 
 export const useStats = () => {
@@ -14,6 +20,27 @@ export const useActivities = () => {
     return useQuery<Activity[]>({
         queryKey: queryKeys.activities,
         queryFn: getRecentActivities,
+    });
+};
+
+export const useUserGrowth = (period: 'daily' | 'weekly' | 'monthly' | 'yearly' = 'daily') => {
+    return useQuery({
+        queryKey: ['user-growth', period],
+        queryFn: () => getUserGrowth(period),
+    });
+};
+
+export const usePaymentMethods = () => {
+    return useQuery({
+        queryKey: ['payment-methods'],
+        queryFn: getPaymentMethods,
+    });
+};
+
+export const usePackagePopularity = () => {
+    return useQuery({
+        queryKey: ['package-popularity'],
+        queryFn: getPackagePopularity,
     });
 };
 

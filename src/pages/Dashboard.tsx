@@ -1,13 +1,41 @@
-import { FC, useMemo } from 'react';
+import { FC, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useStats, useActivities as useRecentActivities } from '../hooks/useStats';
+import { 
+    useStats, 
+    useActivities as useRecentActivities, 
+    useUserGrowth, 
+    usePaymentMethods, 
+    usePackagePopularity 
+} from '../hooks/useStats';
 import { LoadingSpinner, Badge } from '../components/ui';
 import type { StatCardProps, QuickActionCardProps, Activity } from '../types';
+import {
+    AreaChart,
+    Area,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    PieChart,
+    Pie,
+    Cell,
+    BarChart,
+    Bar,
+    Legend
+} from 'recharts';
+
+const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
 const Dashboard = () => {
+    const [growthPeriod, setGrowthPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
+
     // React Query hooks
     const { data: stats, isLoading: statsLoading } = useStats();
     const { data: activities = [] } = useRecentActivities();
+    const { data: userGrowth = [], isLoading: growthLoading } = useUserGrowth(growthPeriod);
+    const { data: paymentMethods = [] } = usePaymentMethods();
+    const { data: packagePopularity = [] } = usePackagePopularity();
 
     // Greeting based on time
     const greeting = useMemo(() => {
@@ -79,31 +107,16 @@ const Dashboard = () => {
         </Link>
     );
 
-    if (statsLoading) {
-        return <LoadingSpinner size="lg" text="Loading dashboard..." icon="📊" />;
+    if (statsLoading && growthLoading) {
+        return <LoadingSpinner size="lg" text="Loading dashboard analytics..." icon="📊" />;
     }
 
     return (
-        <div className="space-y-6 md:space-y-8 animate-fade-in">
+        <div className="space-y-6 md:space-y-8 animate-fade-in mb-10">
             {/* Welcome Banner */}
             <div className="relative overflow-hidden bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800 rounded-3xl p-6 md:p-10 shadow-2xl">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full opacity-5 transform translate-x-1/2 -translate-y-1/2" />
                 <div className="absolute bottom-0 left-0 w-48 h-48 bg-white rounded-full opacity-5 transform -translate-x-1/2 translate-y-1/2" />
-
-                {[...Array(15)].map((_, i) => (
-                    <div
-                        key={i}
-                        className="absolute bg-white rounded-full opacity-20"
-                        style={{
-                            width: Math.random() * 8 + 4 + 'px',
-                            height: Math.random() * 8 + 4 + 'px',
-                            top: Math.random() * 100 + '%',
-                            left: Math.random() * 100 + '%',
-                            animation: 'float 6s linear infinite',
-                            animationDelay: Math.random() * 3 + 's',
-                        }}
-                    />
-                ))}
 
                 <div className="relative z-10">
                     <div className="flex flex-col md:flex-row md:items-center gap-3 mb-3">
@@ -130,12 +143,6 @@ const Dashboard = () => {
                                 })}
                             </span>
                         </div>
-                        <Badge variant="success" icon="⏰">
-                            {new Date().toLocaleTimeString('en-US', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                            })}
-                        </Badge>
                     </div>
                 </div>
             </div>
@@ -172,7 +179,139 @@ const Dashboard = () => {
                 />
             </div>
 
-            {/* Quick Actions */}
+            {/* Growth Analytics Chart (LineChart/AreaChart) */}
+            <div className="bg-white rounded-3xl p-6 md:p-8 shadow-xl border border-gray-100">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl p-3">
+                            <span className="text-2xl">📈</span>
+                        </div>
+                        <h2 className="text-xl md:text-2xl font-bold text-gray-800">User Growth Analytics</h2>
+                    </div>
+                    <div className="flex bg-gray-100 p-1 rounded-xl">
+                        {(['daily', 'weekly', 'monthly', 'yearly'] as const).map((p) => (
+                            <button
+                                key={p}
+                                onClick={() => setGrowthPeriod(p)}
+                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                                    growthPeriod === p 
+                                    ? 'bg-white text-purple-600 shadow-sm' 
+                                    : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                            >
+                                {p.charAt(0).toUpperCase() + p.slice(1)}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="h-[300px] md:h-[400px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={userGrowth}>
+                            <defs>
+                                <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
+                                    <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                            <XAxis 
+                                dataKey="label" 
+                                axisLine={false} 
+                                tickLine={false} 
+                                tick={{fill: '#6B7280', fontSize: 12}}
+                                dy={10}
+                            />
+                            <YAxis 
+                                axisLine={false} 
+                                tickLine={false} 
+                                tick={{fill: '#6B7280', fontSize: 12}}
+                            />
+                            <Tooltip 
+                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                            />
+                            <Area 
+                                type="monotone" 
+                                dataKey="count" 
+                                stroke="#8884d8" 
+                                strokeWidth={3}
+                                fillOpacity={1} 
+                                fill="url(#colorCount)" 
+                                animationDuration={1500}
+                            />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Payment Methods (PieChart) */}
+                <div className="bg-white rounded-3xl p-6 md:p-8 shadow-xl border border-gray-100">
+                    <div className="flex items-center gap-3 mb-8">
+                        <div className="bg-gradient-to-r from-emerald-500 to-green-500 rounded-xl p-3">
+                            <span className="text-2xl">💳</span>
+                        </div>
+                        <h2 className="text-xl font-bold text-gray-800">Payment Methods Distribution</h2>
+                    </div>
+
+                    <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={paymentMethods}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={100}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                    animationDuration={1000}
+                                >
+                                    {paymentMethods.map((_, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip />
+                                <Legend verticalAlign="bottom" height={36}/>
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* Package Popularity (BarChart) */}
+                <div className="bg-white rounded-3xl p-6 md:p-8 shadow-xl border border-gray-100">
+                    <div className="flex items-center gap-3 mb-8">
+                        <div className="bg-gradient-to-r from-orange-500 to-amber-500 rounded-xl p-3">
+                            <span className="text-2xl">📦</span>
+                        </div>
+                        <h2 className="text-xl font-bold text-gray-800">Package Popularity</h2>
+                    </div>
+
+                    <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={packagePopularity} layout="vertical">
+                                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#E5E7EB" />
+                                <XAxis type="number" hide />
+                                <YAxis dataKey="name" type="category" width={100} tick={{fontSize: 12, fontWeight: 'bold'}} />
+                                <Tooltip cursor={{fill: 'transparent'}} />
+                                <Bar 
+                                    dataKey="count" 
+                                    fill="#ffc658" 
+                                    radius={[0, 10, 10, 0]}
+                                    barSize={30}
+                                    animationDuration={1200}
+                                >
+                                    {packagePopularity.map((_, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[(index + 2) % COLORS.length]} />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            </div>
+
+            {/* Quick Actions (moved lower if needed, or kept here) */}
             <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-3xl p-6 md:p-8 shadow-xl">
                 <div className="flex items-center gap-3 mb-6">
                     <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-xl p-3">
@@ -209,7 +348,7 @@ const Dashboard = () => {
                 <div className="bg-white rounded-3xl p-6 md:p-8 shadow-xl border border-gray-100">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="bg-gradient-to-r from-pink-500 to-rose-500 rounded-xl p-3">
-                            <span className="text-2xl">📊</span>
+                            <span className="text-2xl">🕒</span>
                         </div>
                         <h2 className="text-xl font-bold text-gray-800">Recent Activity</h2>
                     </div>
@@ -276,3 +415,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+
