@@ -1,4 +1,4 @@
-import { FC, useState, useMemo } from 'react';
+import { FC, useState, useMemo, useEffect } from 'react';
 import {
     useFinanceSummary,
     useFinanceBreakdown,
@@ -24,23 +24,51 @@ import {
 
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
+// Sub-component for Search Highlighting (Stabilo effect)
+const HighlightText: FC<{ text: string, highlight: string }> = ({ text, highlight }) => {
+    if (!highlight || !highlight.trim()) return <span>{text}</span>;
+
+    const parts = String(text).split(new RegExp(`(${highlight})`, 'gi'));
+    return (
+        <span>
+            {parts.map((part, i) => (
+                part.toLowerCase() === highlight.toLowerCase() ? (
+                    <mark key={i} className="bg-yellow-200 text-yellow-900 rounded-[2px] px-0.5">{part}</mark>
+                ) : (
+                    <span key={i}>{part}</span>
+                )
+            ))}
+        </span>
+    );
+};
+
 const Finance: FC = () => {
     const [period, setPeriod] = useState<string>('30d');
     const [filterStatus, setFilterStatus] = useState<string>('');
     const [filterMethod, setFilterMethod] = useState<string>('');
     const [startDate, setStartDate] = useState<string>('');
     const [endDate, setEndDate] = useState<string>('');
+    const [logsSearch, setLogsSearch] = useState<string>('');
+
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState<number>(1);
+    const itemsPerPage = 10;
 
     // Fetching data
     const { data: summary, isLoading: isSummaryLoading } = useFinanceSummary();
     const { data: breakdown, isLoading: isBreakdownLoading } = useFinanceBreakdown();
     const { data: trends, isLoading: isTrendsLoading } = useRevenueTrends(period);
-    const { data: logs = [], isLoading: isLogsLoading } = useFinanceLogs({
+    const { data: logsData = [], isLoading: isLogsLoading } = useFinanceLogs({
         status: filterStatus,
         method: filterMethod,
         startDate,
         endDate
     });
+
+    // Reset page on filter changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [filterStatus, filterMethod, startDate, endDate, logsSearch]);
 
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat('id-ID', {
@@ -50,13 +78,31 @@ const Finance: FC = () => {
         }).format(value);
     };
 
+    // Client-side text search for logs
+    const filteredLogs = useMemo(() => {
+        if (!logsSearch.trim()) return logsData;
+        const searchLower = logsSearch.toLowerCase();
+        return logsData.filter((log: any) =>
+            String(log.id).includes(logsSearch) ||
+            log.user_name.toLowerCase().includes(searchLower) ||
+            log.user_email.toLowerCase().includes(searchLower)
+        );
+    }, [logsData, logsSearch]);
+
+    // Pagination calculations
+    const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
+    const paginatedLogs = filteredLogs.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
     const handleExportCSV = () => {
-        if (logs.length === 0) return;
+        if (filteredLogs.length === 0) return;
 
         const headers = ['ID', 'User', 'Email', 'Phone', 'Package', 'Amount', 'Method', 'Status', 'Date'];
         const csvContent = [
             headers.join(','),
-            ...logs.map((log: any) => [
+            ...filteredLogs.map((log: any) => [
                 log.id,
                 `"${log.user_name}"`,
                 log.user_email,
@@ -79,6 +125,66 @@ const Finance: FC = () => {
         link.click();
         document.body.removeChild(link);
     };
+
+    const PaginationControls = () => (
+        <div className="p-6 bg-white border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="text-sm font-medium text-gray-500">
+                Found <span className="text-emerald-600 font-bold">{filteredLogs.length}</span> logs
+                {filteredLogs.length > 0 && ` (Showing ${Math.min(filteredLogs.length, (currentPage - 1) * itemsPerPage + 1)}-${Math.min(filteredLogs.length, currentPage * itemsPerPage)})`}
+            </div>
+
+            {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="px-4 py-2 rounded-xl bg-gray-100 text-gray-600 font-bold hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    >
+                        ← Prev
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                        {[...Array(totalPages)].map((_, i) => {
+                            const pageNum = i + 1;
+                            if (
+                                totalPages <= 7 ||
+                                pageNum === 1 ||
+                                pageNum === totalPages ||
+                                (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+                            ) {
+                                return (
+                                    <button
+                                        key={pageNum}
+                                        onClick={() => setCurrentPage(pageNum)}
+                                        className={`w-10 h-10 rounded-xl font-bold transition-all ${currentPage === pageNum
+                                            ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg'
+                                            : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                            }`}
+                                    >
+                                        {pageNum}
+                                    </button>
+                                );
+                            } else if (
+                                pageNum === currentPage - 2 ||
+                                pageNum === currentPage + 2
+                            ) {
+                                return <span key={pageNum} className="text-gray-400 font-black">...</span>;
+                            }
+                            return null;
+                        })}
+                    </div>
+
+                    <button
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                        className="px-4 py-2 rounded-xl bg-gray-100 text-gray-600 font-bold hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    >
+                        Next →
+                    </button>
+                </div>
+            )}
+        </div>
+    );
 
     if (isSummaryLoading || isBreakdownLoading) {
         return <LoadingSpinner size="lg" text="Loading financial data..." icon="💰" />;
@@ -128,8 +234,8 @@ const Finance: FC = () => {
                                 key={p.value}
                                 onClick={() => setPeriod(p.value)}
                                 className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${period === p.value
-                                        ? 'bg-white text-emerald-600 shadow-sm'
-                                        : 'text-gray-500 hover:text-gray-700'
+                                    ? 'bg-white text-emerald-600 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700'
                                     }`}
                             >
                                 {p.label}
@@ -211,9 +317,20 @@ const Finance: FC = () => {
 
             {/* Filters & Transaction Logs */}
             <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
-                <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="p-6 border-b border-gray-100 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                     <h2 className="text-xl font-bold text-gray-800">Financial Logs & Reports</h2>
                     <div className="flex flex-wrap items-center gap-3">
+                        {/* New Search Input */}
+                        <div className="flex-1 min-w-[200px]">
+                            <input
+                                type="text"
+                                value={logsSearch}
+                                onChange={(e) => setLogsSearch(e.target.value)}
+                                placeholder="Search by name, email or ID..."
+                                className="w-full bg-gray-100 border-none rounded-xl px-4 py-2 text-sm font-medium focus:ring-2 focus:ring-emerald-500"
+                            />
+                        </div>
+
                         <select
                             value={filterStatus}
                             onChange={(e) => setFilterStatus(e.target.value)}
@@ -250,7 +367,7 @@ const Finance: FC = () => {
                         </div>
                         <button
                             onClick={handleExportCSV}
-                            disabled={logs.length === 0}
+                            disabled={filteredLogs.length === 0}
                             className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-md"
                         >
                             <span>📥</span> Export CSV
@@ -276,19 +393,25 @@ const Finance: FC = () => {
                                 <tr>
                                     <td colSpan={7} className="px-6 py-10 text-center text-gray-400">Loading logs...</td>
                                 </tr>
-                            ) : logs.length === 0 ? (
+                            ) : filteredLogs.length === 0 ? (
                                 <tr>
                                     <td colSpan={7} className="px-6 py-10 text-center text-gray-400">No transactions found matching the filters.</td>
                                 </tr>
                             ) : (
-                                logs.map((log: any) => (
+                                paginatedLogs.map((log: any) => (
                                     <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
                                         <td className="px-6 py-4">
-                                            <span className="text-xs font-mono text-gray-400">#{log.id}</span>
+                                            <span className="text-xs font-mono text-gray-400">
+                                                #<HighlightText text={String(log.id)} highlight={logsSearch} />
+                                            </span>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="font-bold text-gray-800">{log.user_name}</div>
-                                            <div className="text-xs text-gray-500">{log.user_email}</div>
+                                            <div className="font-bold text-gray-800">
+                                                <HighlightText text={log.user_name} highlight={logsSearch} />
+                                            </div>
+                                            <div className="text-xs text-gray-500">
+                                                <HighlightText text={log.user_email} highlight={logsSearch} />
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <Badge variant="purple">{log.package_name}</Badge>
@@ -318,6 +441,7 @@ const Finance: FC = () => {
                         </tbody>
                     </table>
                 </div>
+                <PaginationControls />
             </div>
         </div>
     );

@@ -209,9 +209,13 @@ const Dashboard = () => {
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={userGrowth}>
                             <defs>
-                                <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                                <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
                                     <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+                                </linearGradient>
+                                <linearGradient id="colorVerified" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                                 </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
@@ -229,14 +233,30 @@ const Dashboard = () => {
                             />
                             <Tooltip 
                                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                                formatter={(value: any, name: any) => [
+                                    value, 
+                                    name === 'total' ? 'Total Registrations' : 'Verified Users'
+                                ]}
                             />
+                            <Legend verticalAlign="top" height={36}/>
                             <Area 
                                 type="monotone" 
-                                dataKey="count" 
+                                dataKey="total" 
+                                name="total"
                                 stroke="#8884d8" 
                                 strokeWidth={3}
                                 fillOpacity={1} 
-                                fill="url(#colorCount)" 
+                                fill="url(#colorTotal)" 
+                                animationDuration={1500}
+                            />
+                            <Area 
+                                type="monotone" 
+                                dataKey="verified" 
+                                name="verified"
+                                stroke="#10b981" 
+                                strokeWidth={3}
+                                fillOpacity={1} 
+                                fill="url(#colorVerified)" 
                                 animationDuration={1500}
                             />
                         </AreaChart>
