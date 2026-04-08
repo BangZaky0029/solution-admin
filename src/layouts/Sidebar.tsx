@@ -16,7 +16,11 @@ const Sidebar: FC = () => {
         { path: '/users', label: 'Users', icon: '👥', gradient: 'from-purple-500 to-purple-600' },
         { path: '/finance', label: 'Finance', icon: '💰', gradient: 'from-emerald-500 to-teal-600' },
         { path: '/whatsapp', label: 'WhatsApp Bot', icon: '💬', gradient: 'from-green-400 to-emerald-500' },
+        { path: '/insights', label: 'User Insights', icon: '💡', gradient: 'from-indigo-500 to-purple-600' },
+        { path: '/otps', label: 'OTP Management', icon: '🔑', gradient: 'from-rose-500 to-orange-600' },
     ];
+
+
 
     const handleLogout = (): void => {
         if (confirm('Are you sure you want to logout?')) {

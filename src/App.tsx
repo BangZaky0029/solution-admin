@@ -11,6 +11,8 @@ import PackageEditor from './pages/PackageEditor';
 import Users from './pages/Users';
 import Finance from './pages/Finance';
 import WhatsAppConnector from './pages/WhatsAppConnector';
+import UserInsights from './pages/UserInsights';
+import OTPManagement from './pages/OTPManagement';
 import AdminLayout from './layouts/AdminLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -36,11 +38,14 @@ const App: FC = () => {
                                 <Route path="/users" element={<Users />} />
                                 <Route path="/finance" element={<Finance />} />
                                 <Route path="/whatsapp" element={<WhatsAppConnector />} />
+                                <Route path="/insights" element={<UserInsights />} />
+                                <Route path="/otps" element={<OTPManagement />} />
                             </Route>
                         </Route>
                     </Routes>
                 </BrowserRouter>
             </ErrorBoundary>
+
             <Toast />
             <ReactQueryDevtools initialIsOpen={false} />
         </QueryClientProvider>
