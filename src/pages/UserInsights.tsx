@@ -110,10 +110,10 @@ const UserInsights: React.FC = () => {
   };
 
 
-  const handleExportCSV = () => {
+  const handleExportFeedback = () => {
     if (!feedbackData.length) return;
 
-    const headers = ['User', 'Email', 'Rating', 'Comment', 'Date'];
+    const headers = ['User', 'Email', 'Rating', 'Comment', 'Admin Reply', 'Date'];
     const csvContent = [
       headers.join(','),
       ...feedbackData.map(f => [
@@ -121,15 +121,52 @@ const UserInsights: React.FC = () => {
         `"${f.user_email}"`,
         f.rating,
         `"${f.comment.replace(/"/g, '""')}"`,
+        `"${(f.admin_reply || '').replace(/"/g, '""')}"`,
         new Date(f.updated_at).toLocaleDateString()
       ].join(','))
     ].join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    downloadCSV(csvContent, 'user_feedback');
+  };
+
+  const handleExportAcquisition = () => {
+    if (!acquisitionData.length) return;
+
+    const headers = ['Source Channel', 'User Count'];
+    const csvContent = [
+      headers.join(','),
+      ...acquisitionData.map(a => [
+        `"${a.source}"`,
+        a.count
+      ].join(','))
+    ].join('\n');
+
+    downloadCSV(csvContent, 'acquisition_channels');
+  };
+
+  const handleExportGenerator = () => {
+    if (!generatorData.length) return;
+
+    const headers = ['Generator Name', 'Traffic Value', 'Metric Type', 'Period'];
+    const csvContent = [
+      headers.join(','),
+      ...generatorData.map(g => [
+        `"${g.name}"`,
+        g.value,
+        `"${generatorMetric}"`,
+        `"${generatorPeriod}"`
+      ].join(','))
+    ].join('\n');
+
+    downloadCSV(csvContent, 'generator_activity');
+  };
+
+  const downloadCSV = (content: string, fileName: string) => {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `user_feedback_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `${fileName}_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -228,12 +265,6 @@ const UserInsights: React.FC = () => {
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">User Insights</h1>
           <p className="text-slate-500 font-medium">Analitik sumber user dan feedback layanan</p>
         </div>
-        <button
-          onClick={handleExportCSV}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl flex items-center gap-2 transition-all font-bold shadow-lg shadow-indigo-100 active:scale-95"
-        >
-          <Download size={18} /> Export CSV
-        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -243,7 +274,16 @@ const UserInsights: React.FC = () => {
             <div className="bg-indigo-50 p-2.5 rounded-xl">
               <Users size={20} className="text-indigo-600" />
             </div>
-            <h2 className="text-xl font-bold text-slate-800">Acquisition Channel</h2>
+            <div className="flex-1">
+              <h2 className="text-xl font-bold text-slate-800">Acquisition Channel</h2>
+            </div>
+            <button 
+              onClick={handleExportAcquisition}
+              className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"
+              title="Export Acquisition CSV"
+            >
+              <Download size={18} />
+            </button>
           </div>
           <div className="h-[320px] w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -284,6 +324,13 @@ const UserInsights: React.FC = () => {
                 <Star size={20} className="text-amber-500" />
               </div>
               <h2 className="text-xl font-bold text-slate-800">User Feedbacks</h2>
+              <button 
+                onClick={handleExportFeedback}
+                className="p-2 text-slate-400 hover:text-amber-500 transition-colors"
+                title="Export Feedback CSV"
+              >
+                <Download size={18} />
+              </button>
             </div>
 
             {/* Star Rating Filter */}
@@ -503,7 +550,16 @@ const UserInsights: React.FC = () => {
               <BarChart3 size={24} className="text-purple-600" />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-slate-800 tracking-tight">Generator Activity</h2>
+              <div className="flex items-center gap-3">
+                 <h2 className="text-2xl font-black text-slate-800 tracking-tight">Generator Activity</h2>
+                 <button 
+                  onClick={handleExportGenerator}
+                  className="p-2 bg-purple-50 text-purple-600 hover:bg-purple-100 rounded-xl transition-all"
+                  title="Export Activity CSV"
+                >
+                  <Download size={16} />
+                </button>
+              </div>
               <p className="text-sm text-slate-500 font-medium">Monitoring performa dan minat fitur generator</p>
             </div>
           </div>
