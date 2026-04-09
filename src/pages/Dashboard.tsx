@@ -29,6 +29,7 @@ const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE', '#00C49F'
 
 const Dashboard = () => {
     const [growthPeriod, setGrowthPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
+    const [visibleLines, setVisibleLines] = useState<string[]>(['total', 'verified', 'active', 'expired']);
 
     // React Query hooks
     const { data: stats, isLoading: statsLoading } = useStats();
@@ -150,115 +151,215 @@ const Dashboard = () => {
             {/* Statistics Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 <StatCard
+                    icon="👥"
+                    title="Total Users"
+                    value={stats?.totalUsers ?? 0}
+                    gradient="bg-gradient-to-br from-purple-500 to-purple-700"
+                    delay="0s"
+                />
+                <StatCard
+                    icon="🛡️"
+                    title="Verified Users"
+                    value={stats?.verifiedUsers ?? 0}
+                    gradient="bg-gradient-to-br from-emerald-500 to-emerald-700"
+                    delay="0.1s"
+                />
+                <StatCard
+                    icon="⚡"
+                    title="Active Users"
+                    value={stats?.activeSubscriptions ?? 0}
+                    gradient="bg-gradient-to-br from-indigo-500 to-indigo-700"
+                    delay="0.2s"
+                />
+                <StatCard
+                    icon="🚫"
+                    title="Expired Users"
+                    value={stats?.expiredSubscriptions ?? 0}
+                    gradient="bg-gradient-to-br from-rose-500 to-rose-700"
+                    delay="0.3s"
+                />
+                
+                <StatCard
                     icon="💳"
                     title="Total Payments"
                     value={stats?.totalPayments ?? 0}
                     gradient="bg-gradient-to-br from-blue-500 to-blue-700"
-                    delay="0s"
+                    delay="0.4s"
+                />
+                <StatCard
+                    icon="✅"
+                    title="Confirmed Payments"
+                    value={stats?.confirmedPayments ?? 0}
+                    gradient="bg-gradient-to-br from-green-500 to-green-700"
+                    delay="0.5s"
                 />
                 <StatCard
                     icon="⏳"
                     title="Pending Payments"
                     value={stats?.pendingPayments ?? 0}
                     gradient="bg-gradient-to-br from-amber-500 to-orange-600"
-                    delay="0.1s"
+                    delay="0.6s"
                 />
                 <StatCard
-                    icon="✅"
-                    title="Confirmed"
-                    value={stats?.confirmedPayments ?? 0}
-                    gradient="bg-gradient-to-br from-emerald-500 to-green-700"
-                    delay="0.2s"
-                />
-                <StatCard
-                    icon="👥"
-                    title="Total Users"
-                    value={stats?.totalUsers ?? 0}
-                    gradient="bg-gradient-to-br from-purple-500 to-purple-700"
-                    delay="0.3s"
+                    icon="💰"
+                    title="Total Revenue"
+                    value={`Rp ${(stats?.totalRevenue ?? 0).toLocaleString('id-ID')}`}
+                    gradient="bg-gradient-to-br from-cyan-500 to-blue-600"
+                    delay="0.7s"
                 />
             </div>
 
             {/* Growth Analytics Chart (LineChart/AreaChart) */}
             <div className="bg-white rounded-3xl p-6 md:p-8 shadow-xl border border-gray-100">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
                     <div className="flex items-center gap-3">
                         <div className="bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl p-3">
                             <span className="text-2xl">📈</span>
                         </div>
-                        <h2 className="text-xl md:text-2xl font-bold text-gray-800">User Growth Analytics</h2>
+                        <div>
+                            <h2 className="text-xl md:text-2xl font-bold text-gray-800">User Growth Analytics</h2>
+                            <p className="text-sm text-gray-500">Track user lifecycle and acquisition trends</p>
+                        </div>
                     </div>
-                    <div className="flex bg-gray-100 p-1 rounded-xl">
-                        {(['daily', 'weekly', 'monthly', 'yearly'] as const).map((p) => (
-                            <button
-                                key={p}
-                                onClick={() => setGrowthPeriod(p)}
-                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                                    growthPeriod === p 
-                                    ? 'bg-white text-purple-600 shadow-sm' 
-                                    : 'text-gray-500 hover:text-gray-700'
-                                }`}
-                            >
-                                {p.charAt(0).toUpperCase() + p.slice(1)}
-                            </button>
-                        ))}
+                    
+                    <div className="flex flex-wrap items-center gap-4">
+                        {/* Legend / Visibility Toggles */}
+                        <div className="flex flex-wrap items-center gap-3 bg-gray-50 p-2 rounded-2xl border border-gray-100">
+                            {[
+                                { key: 'total', label: 'Total', color: '#8884d8' },
+                                { key: 'verified', label: 'Verified', color: '#10b981' },
+                                { key: 'active', label: 'Active', color: '#6366f1' },
+                                { key: 'expired', label: 'Expired', color: '#f43f5e' }
+                            ].map((item) => (
+                                <button
+                                    key={item.key}
+                                    onClick={() => setVisibleLines(prev => 
+                                        prev.includes(item.key) 
+                                        ? prev.filter(k => k !== item.key) 
+                                        : [...prev, item.key]
+                                    )}
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                                        visibleLines.includes(item.key)
+                                        ? 'bg-white shadow-sm border-gray-200'
+                                        : 'bg-transparent border-transparent grayscale opacity-50'
+                                    }`}
+                                >
+                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                                    {item.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="flex bg-gray-100 p-1 rounded-xl">
+                            {(['daily', 'weekly', 'monthly', 'yearly'] as const).map((p) => (
+                                <button
+                                    key={p}
+                                    onClick={() => setGrowthPeriod(p)}
+                                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                                        growthPeriod === p 
+                                        ? 'bg-white text-purple-600 shadow-sm' 
+                                        : 'text-gray-500 hover:text-gray-700'
+                                    }`}
+                                >
+                                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
 
-                <div className="h-[300px] md:h-[400px] w-full">
+                <div className="h-[350px] md:h-[450px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={userGrowth}>
+                        <AreaChart data={userGrowth} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
+                                    <stop offset="5%" stopColor="#8884d8" stopOpacity={0.3}/>
                                     <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
                                 </linearGradient>
                                 <linearGradient id="colorVerified" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
                                     <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                                 </linearGradient>
+                                <linearGradient id="colorActive" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                </linearGradient>
+                                <linearGradient id="colorExpired" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                                </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                             <XAxis 
                                 dataKey="label" 
                                 axisLine={false} 
                                 tickLine={false} 
-                                tick={{fill: '#6B7280', fontSize: 12}}
+                                tick={{fill: '#94a3b8', fontSize: 11}}
                                 dy={10}
+                                minTickGap={30}
                             />
                             <YAxis 
                                 axisLine={false} 
                                 tickLine={false} 
-                                tick={{fill: '#6B7280', fontSize: 12}}
+                                tick={{fill: '#94a3b8', fontSize: 11}}
                             />
                             <Tooltip 
-                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                                formatter={(value: any, name: any) => [
-                                    value, 
-                                    name === 'total' ? 'Total Registrations' : 'Verified Users'
-                                ]}
+                                contentStyle={{ 
+                                    borderRadius: '16px', 
+                                    border: '1px solid #f1f5f9', 
+                                    boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
+                                    padding: '12px'
+                                }}
+                                itemStyle={{ padding: '2px 0' }}
                             />
-                            <Legend verticalAlign="top" height={36}/>
-                            <Area 
-                                type="monotone" 
-                                dataKey="total" 
-                                name="total"
-                                stroke="#8884d8" 
-                                strokeWidth={3}
-                                fillOpacity={1} 
-                                fill="url(#colorTotal)" 
-                                animationDuration={1500}
-                            />
-                            <Area 
-                                type="monotone" 
-                                dataKey="verified" 
-                                name="verified"
-                                stroke="#10b981" 
-                                strokeWidth={3}
-                                fillOpacity={1} 
-                                fill="url(#colorVerified)" 
-                                animationDuration={1500}
-                            />
+                            {visibleLines.includes('total') && (
+                                <Area 
+                                    type="monotone" 
+                                    dataKey="total" 
+                                    name="Total Registrations"
+                                    stroke="#8884d8" 
+                                    strokeWidth={3}
+                                    fillOpacity={1} 
+                                    fill="url(#colorTotal)" 
+                                    animationDuration={1500}
+                                />
+                            )}
+                            {visibleLines.includes('verified') && (
+                                <Area 
+                                    type="monotone" 
+                                    dataKey="verified" 
+                                    name="Verified Users"
+                                    stroke="#10b981" 
+                                    strokeWidth={3}
+                                    fillOpacity={1} 
+                                    fill="url(#colorVerified)" 
+                                    animationDuration={1500}
+                                />
+                            )}
+                            {visibleLines.includes('active') && (
+                                <Area 
+                                    type="monotone" 
+                                    dataKey="active" 
+                                    name="Activated Packages"
+                                    stroke="#6366f1" 
+                                    strokeWidth={3}
+                                    fillOpacity={1} 
+                                    fill="url(#colorActive)" 
+                                    animationDuration={1500}
+                                />
+                            )}
+                            {visibleLines.includes('expired') && (
+                                <Area 
+                                    type="monotone" 
+                                    dataKey="expired" 
+                                    name="Expired Subscriptions"
+                                    stroke="#f43f5e" 
+                                    strokeWidth={3}
+                                    fillOpacity={1} 
+                                    fill="url(#colorExpired)" 
+                                    animationDuration={1500}
+                                />
+                            )}
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>

@@ -74,7 +74,9 @@ export interface Stats {
     pendingPayments: number;
     confirmedPayments: number;
     totalUsers: number;
+    verifiedUsers: number;
     activeSubscriptions: number;
+    expiredSubscriptions: number;
     totalRevenue: number;
 }
 

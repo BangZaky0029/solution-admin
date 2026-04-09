@@ -16,8 +16,16 @@ export const getRecentActivities = async (): Promise<Activity[]> => {
     return response.data;
 };
 
-export const getUserGrowth = async (period: 'daily' | 'weekly' | 'monthly' | 'yearly' = 'daily'): Promise<{ label: string; count: number }[]> => {
-    const response = await api.get<{ label: string; count: number }[]>(`/stats/user-growth?period=${period}`);
+export interface UserGrowthData {
+    label: string;
+    total: number;
+    verified: number;
+    active: number;
+    expired: number;
+}
+
+export const getUserGrowth = async (period: 'daily' | 'weekly' | 'monthly' | 'yearly' = 'daily'): Promise<UserGrowthData[]> => {
+    const response = await api.get<UserGrowthData[]>(`/stats/user-growth?period=${period}`);
     return response.data;
 };
 
