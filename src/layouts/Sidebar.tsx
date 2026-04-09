@@ -2,25 +2,47 @@ import { FC } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { logout } from '../utils/auth';
 import type { NavItem } from '../types';
-
 import { useUIStore } from '../stores/uiStore';
+
+interface NavGroup {
+    title: string;
+    items: NavItem[];
+}
 
 const Sidebar: FC = () => {
     const location = useLocation();
     const { isMobileSidebarOpen, closeMobileSidebar } = useUIStore();
 
-    const navItems: NavItem[] = [
-        { path: '/', label: 'Dashboard', icon: '📊', gradient: 'from-blue-500 to-blue-600' },
-        { path: '/payments', label: 'Payments', icon: '💳', gradient: 'from-amber-500 to-orange-600' },
-        { path: '/packages', label: 'Packages', icon: '📦', gradient: 'from-green-500 to-emerald-600' },
-        { path: '/users', label: 'Users', icon: '👥', gradient: 'from-purple-500 to-purple-600' },
-        { path: '/finance', label: 'Finance', icon: '💰', gradient: 'from-emerald-500 to-teal-600' },
-        { path: '/whatsapp', label: 'WhatsApp Bot', icon: '💬', gradient: 'from-green-400 to-emerald-500' },
-        { path: '/insights', label: 'User Insights', icon: '💡', gradient: 'from-indigo-500 to-purple-600' },
-        { path: '/otps', label: 'OTP Management', icon: '🔑', gradient: 'from-rose-500 to-orange-600' },
+    const navGroups: NavGroup[] = [
+        {
+            title: 'UTAMA',
+            items: [
+                { path: '/', label: 'Dashboard', icon: '📊', gradient: 'from-blue-500 to-indigo-600' },
+            ]
+        },
+        {
+            title: 'MANAJEMEN USER',
+            items: [
+                { path: '/users', label: 'Users', icon: '👥', gradient: 'from-purple-500 to-fuchsia-600' },
+                { path: '/otps', label: 'OTP Management', icon: '🔑', gradient: 'from-rose-500 to-orange-600' },
+            ]
+        },
+        {
+            title: 'BISNIS & LAYANAN',
+            items: [
+                { path: '/packages', label: 'Packages', icon: '📦', gradient: 'from-green-500 to-emerald-600' },
+                { path: '/payments', label: 'Payments', icon: '💳', gradient: 'from-amber-500 to-orange-600' },
+                { path: '/finance', label: 'Finance', icon: '💰', gradient: 'from-emerald-500 to-teal-600' },
+            ]
+        },
+        {
+            title: 'ANALITIK & TOOLS',
+            items: [
+                { path: '/insights', label: 'User Insights', icon: '💡', gradient: 'from-indigo-500 to-purple-600' },
+                { path: '/whatsapp', label: 'WhatsApp Bot', icon: '💬', gradient: 'from-green-400 to-emerald-500' },
+            ]
+        }
     ];
-
-
 
     const handleLogout = (): void => {
         if (confirm('Are you sure you want to logout?')) {
@@ -33,152 +55,126 @@ const Sidebar: FC = () => {
             {/* Mobile Overlay */}
             {isMobileSidebarOpen && (
                 <div
-                    className="fixed inset-0 bg-black/50 z-[9998] md:hidden backdrop-blur-sm transition-opacity"
+                    className="fixed inset-0 bg-black/60 z-[9998] md:hidden backdrop-blur-md transition-opacity duration-300"
                     onClick={closeMobileSidebar}
                 />
             )}
 
             <aside className={`
-                fixed inset-y-0 left-0 z-[9999] w-72 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white flex flex-col overflow-hidden transition-transform duration-300 ease-in-out shadow-2xl
+                fixed inset-y-0 left-0 z-[9999] w-72 bg-[#0f172a] text-white flex flex-col overflow-hidden transition-all duration-300 ease-in-out shadow-2xl border-r border-white/5
                 md:relative md:translate-x-0
                 ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
             `}>
-                {/* Decorative background elements (Optimized for performance) */}
-                <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-20 pointer-events-none hidden md:block">
-                    <div className="absolute -top-20 -left-20 w-40 h-40 bg-purple-500 rounded-full blur-3xl"></div>
-                    <div className="absolute top-40 -right-20 w-40 h-40 bg-blue-500 rounded-full blur-3xl"></div>
-                    <div className="absolute -bottom-20 left-20 w-40 h-40 bg-pink-500 rounded-full blur-3xl"></div>
+                {/* Decorative Elements */}
+                <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-10 pointer-events-none">
+                    <div className="absolute -top-24 -left-24 w-64 h-64 bg-purple-600 rounded-full blur-[100px]"></div>
+                    <div className="absolute top-1/2 -right-24 w-64 h-64 bg-blue-600 rounded-full blur-[100px]"></div>
                 </div>
 
                 {/* Logo Section */}
-                <div className="relative p-6 border-b border-white/10 flex items-center justify-between">
+                <div className="relative p-7 border-b border-white/5 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="relative">
-                            <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl blur-md opacity-75 animate-pulse hidden md:block"></div>
-                            <div className="relative bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl p-3 shadow-xl">
-                                <span className="text-3xl">🚀</span>
+                        <div className="relative group">
+                            <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-blue-500 rounded-2xl blur-lg opacity-50 group-hover:opacity-80 transition-opacity"></div>
+                            <div className="relative bg-[#1e293b] border border-white/10 rounded-2xl p-3 shadow-2xl">
+                                <span className="text-3xl block transform group-hover:scale-110 group-hover:rotate-12 transition-transform">🚀</span>
                             </div>
                         </div>
                         <div>
-                            <h2 className="text-2xl font-black tracking-tight bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
-                                Gateway APTO
+                            <h2 className="text-2xl font-black tracking-tighter text-white leading-tight">
+                                Gateway <span className="text-blue-400">APTO</span>
                             </h2>
-                            <p className="text-xs text-purple-300 font-semibold mt-1">
-                                Admin Control Panel
+                            <p className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-bold mt-1">
+                                Control Panel
                             </p>
                         </div>
                     </div>
 
-                    {/* Mobile Close Button (Larger touch target) */}
                     <button
                         onClick={closeMobileSidebar}
-                        className="md:hidden text-gray-400 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors"
-                        aria-label="Close sidebar"
+                        className="md:hidden text-gray-500 hover:text-white p-2 rounded-xl hover:bg-white/5 transition-all"
                     >
                         <span className="text-2xl">✕</span>
                     </button>
                 </div>
 
-                {/* Admin Profile */}
-                <div className="relative p-6 border-b border-white/10">
-                    <div className="flex items-center gap-3 bg-white/5 backdrop-blur-sm rounded-xl p-3 hover:bg-white/10 transition-all duration-300">
-                        <div className="relative">
-                            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full blur-sm animate-pulse"></div>
-                            <div className="relative w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center font-bold text-lg shadow-lg">
-                                A
+                {/* Navigation Scrollable Area */}
+                <nav className="relative flex-1 p-6 space-y-8 overflow-y-auto custom-scrollbar">
+                    {navGroups.map((group, groupIdx) => (
+                        <div key={group.title} className="space-y-3">
+                            <h3 className="text-[10px] font-black tracking-[0.2em] text-gray-500 px-4">
+                                {group.title}
+                            </h3>
+                            <div className="space-y-1">
+                                {group.items.map((item) => {
+                                    const isActive = location.pathname === item.path;
+                                    return (
+                                        <Link
+                                            key={item.path}
+                                            to={item.path}
+                                            onClick={closeMobileSidebar}
+                                            className="group relative block"
+                                        >
+                                            <div className={`
+                                                relative flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-300
+                                                ${isActive
+                                                    ? 'bg-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] backdrop-blur-md'
+                                                    : 'hover:bg-white/5'
+                                                }
+                                            `}>
+                                                {/* Icon */}
+                                                <div className={`
+                                                    relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300
+                                                    ${isActive
+                                                        ? `bg-gradient-to-br ${item.gradient} shadow-lg scale-110`
+                                                        : 'bg-white/5 group-hover:bg-white/10 group-hover:scale-105'
+                                                    }
+                                                `}>
+                                                    <span className={`text-xl ${isActive ? 'scale-110 shadow-sm' : ''}`}>{item.icon}</span>
+                                                </div>
+
+                                                {/* Label */}
+                                                <span className={`
+                                                    font-bold text-sm tracking-tight transition-colors
+                                                    ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}
+                                                `}>
+                                                    {item.label}
+                                                </span>
+
+                                                {/* Active Indicator Arrow */}
+                                                {isActive && (
+                                                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_12px_rgba(96,165,250,0.8)]" />
+                                                )}
+                                            </div>
+                                        </Link>
+                                    );
+                                })}
                             </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="font-bold text-white truncate">Admin User</p>
-                            <p className="text-xs text-gray-400 truncate">administrator@apto.com</p>
-                        </div>
-                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                    </div>
-                </div>
-
-                {/* Navigation */}
-                <nav className="relative flex-1 p-4 space-y-2 overflow-y-auto">
-                    {navItems.map((item, index) => {
-                        const isActive = location.pathname === item.path;
-                        return (
-                            <Link
-                                key={item.path}
-                                to={item.path}
-                                onClick={() => closeMobileSidebar()} // Auto-close on mobile nav
-                                className="group relative block"
-                                style={{ animationDelay: `${index * 0.1}s` }}
-                            >
-                                {/* Active indicator */}
-                                {isActive && (
-                                    <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gradient-to-b ${item.gradient} rounded-r-full`}></div>
-                                )}
-
-                                <div className={`
-                    relative flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300
-                    ${isActive
-                                        ? 'bg-white/10 backdrop-blur-sm shadow-lg'
-                                        : 'hover:bg-white/5 hover:translate-x-1'
-                                    }
-                  `}>
-                                    {/* Icon with gradient background */}
-                                    <div className={`
-                      relative w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-300
-                      ${isActive
-                                            ? `bg-gradient-to-br ${item.gradient} shadow-lg group-hover:scale-110`
-                                            : 'bg-white/5 group-hover:bg-white/10'
-                                        }
-                    `}>
-                                        {/* Glow effect */}
-                                        {isActive && (
-                                            <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} rounded-lg blur-md opacity-50`}></div>
-                                        )}
-                                        <span className="relative text-2xl">{item.icon}</span>
-                                    </div>
-
-                                    {/* Label */}
-                                    <span className={`
-                      font-bold text-base transition-colors
-                      ${isActive ? 'text-white' : 'text-gray-300 group-hover:text-white'}
-                    `}>
-                                        {item.label}
-                                    </span>
-
-                                    {/* Arrow indicator */}
-                                    {isActive && (
-                                        <span className="ml-auto text-xl animate-pulse">→</span>
-                                    )}
-                                </div>
-
-                                {/* Shine effect on hover */}
-                                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-10 transform -translate-x-full group-hover:translate-x-full transition-all duration-1000 pointer-events-none"></div>
-                            </Link>
-                        );
-                    })}
+                    ))}
                 </nav>
 
-                {/* Logout Button */}
-                <div className="relative p-4 border-t border-white/10">
+                {/* Bottom Section */}
+                <div className="relative p-6 mt-auto space-y-4 border-t border-white/5 bg-[#0f172a]/50 backdrop-blur-sm">
+                    {/* Logout */}
                     <button
                         onClick={handleLogout}
-                        className="group w-full flex items-center gap-4 px-4 py-3 rounded-xl bg-gradient-to-r from-red-500/10 to-pink-500/10 hover:from-red-500/20 hover:to-pink-500/20 border border-red-500/20 hover:border-red-500/40 transition-all duration-300 hover:scale-105"
+                        className="group w-full flex items-center gap-4 px-5 py-4 rounded-2xl bg-red-500/5 hover:bg-red-500/10 border border-red-500/10 hover:border-red-500/20 transition-all duration-300"
                     >
-                        <div className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center group-hover:bg-red-500/30 transition-all duration-300">
-                            <span className="text-2xl">🚪</span>
+                        <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <span className="text-xl">🚪</span>
                         </div>
-                        <span className="font-bold text-red-300 group-hover:text-red-200 transition-colors">
-                            Logout
-                        </span>
-                        <span className="ml-auto text-red-300 opacity-0 group-hover:opacity-100 transition-opacity">
-                            →
+                        <span className="font-bold text-sm text-red-400/80 group-hover:text-red-400 transition-colors">
+                            Sign Out
                         </span>
                     </button>
-                </div>
 
-                {/* Footer */}
-                <div className="relative p-4 text-center border-t border-white/10">
-                    <p className="text-xs text-gray-500">
-                        v2.1 • Made with <span className="text-red-400">♥</span>
-                    </p>
+                    {/* Footer Info */}
+                    <div className="text-center">
+                        <p className="text-[10px] text-gray-600 font-medium">
+                            NUANSA v2.1 • Built with ❤️
+                        </p>
+                    </div>
                 </div>
             </aside>
         </>
