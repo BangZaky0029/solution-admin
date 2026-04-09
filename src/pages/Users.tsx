@@ -9,7 +9,8 @@ interface UsersData {
 }
 
 // Sub-component for Search Highlighting (Stabilo effect)
-const HighlightText: FC<{ text: string, highlight: string }> = ({ text, highlight }) => {
+const HighlightText: FC<{ text: string | null | undefined, highlight: string }> = ({ text, highlight }) => {
+    if (!text) return <span className="text-gray-400 italic">No Data</span>;
     if (!highlight.trim()) return <span>{text}</span>;
     
     const parts = text.split(new RegExp(`(${highlight})`, 'gi'));

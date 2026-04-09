@@ -77,7 +77,7 @@ const UserDetailModal: FC<Props> = ({ userId, isOpen, onClose }) => {
                                         </div>
                                         <div>
                                             <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Phone</p>
-                                            <p className="font-medium text-gray-900">{user.phone}</p>
+                                            <p className="font-medium text-gray-900">{user.phone || <span className="text-gray-400 italic">- No phone number -</span>}</p>
                                         </div>
                                         <div>
                                             <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Verification Status</p>
