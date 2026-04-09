@@ -550,16 +550,25 @@ const UserInsights: React.FC = () => {
           <div className="h-[400px] w-full bg-slate-50/50 rounded-3xl p-6 border border-dashed border-slate-200">
             {generatorData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={generatorData} layout="vertical" margin={{ left: 40, right: 30 }}>
+                <BarChart data={generatorData} layout="vertical" margin={{ left: 10, right: 60, top: 20, bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
                   <XAxis type="number" hide />
-                  <YAxis
-                    dataKey="name"
-                    type="category"
-                    width={100}
+                  <YAxis 
+                    dataKey="name" 
+                    type="category" 
+                    width={150} 
                     axisLine={false}
                     tickLine={false}
-                    className="text-[10px] font-bold text-slate-500 uppercase"
+                    tick={(props) => {
+                      const { x, y, payload } = props;
+                      // Clean name for chart labels
+                      const cleanName = payload.value.replace(/^\//, '').replace(/-/g, ' ').split('/').pop()?.toUpperCase() || payload.value;
+                      return (
+                        <text x={x} y={y} dy={4} textAnchor="end" className="fill-slate-500 text-[9px] font-bold uppercase tracking-tight">
+                          {cleanName.length > 25 ? cleanName.substring(0, 22) + '...' : cleanName}
+                        </text>
+                      );
+                    }}
                   />
                   <Tooltip
                     cursor={{ fill: '#f1f5f9' }}
@@ -601,7 +610,9 @@ const UserInsights: React.FC = () => {
                           <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xs">
                             {idx + 1}
                           </div>
-                          <span className="text-sm font-bold text-slate-700 uppercase tracking-tight">{item.name.replace(/-/g, ' ')}</span>
+                          <span className="text-sm font-bold text-slate-700 uppercase tracking-tight">
+                            {item.name.replace(/^\//, '').replace(/-/g, ' ').split('/').pop()?.toUpperCase() || item.name}
+                          </span>
                         </div>
                       </td>
                       <td className="py-4 px-6 text-right">
