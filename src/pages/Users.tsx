@@ -79,9 +79,9 @@ const Users: FC = () => {
         if (search) {
             const searchLower = search.toLowerCase();
             result = result.filter(u =>
-                u.name.toLowerCase().startsWith(searchLower) ||
-                u.email.toLowerCase().includes(searchLower) ||
-                u.phone.includes(search)
+                (u.name?.toLowerCase() || '').includes(searchLower) ||
+                (u.email?.toLowerCase() || '').includes(searchLower) ||
+                (u.phone || '').includes(search)
             );
         }
 
